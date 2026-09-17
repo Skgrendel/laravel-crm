@@ -14,6 +14,7 @@ return [
     'phone' => [
         'button-title' => 'Abrir softphone',
         'page-title' => 'Softphone Zadarma',
+        'popup-blocked' => 'El navegador bloqueó la ventana del softphone. Permití las ventanas emergentes para este sitio y volvé a intentar.',
         'loading' => 'Conectando…',
         'not-configured' => 'Zadarma no está habilitado o configurado todavía. Pide a un admin que lo configure en Settings.',
         'no-extension' => 'Todavía no tienes una extensión SIP asignada. Pide a un admin que te asigne una en Settings > Zadarma VoIP.',

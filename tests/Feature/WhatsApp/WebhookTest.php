@@ -170,14 +170,17 @@ it('stores an inbound message at the instant WhatsApp reported', function () {
     ])->assertNoContent();
 
     $message = WhatsAppMessage::where('wa_message_id', $waMessageId)->first();
-
-    expect($message->sent_at->timestamp)->toBe($timestamp->timestamp);
-
     $conversation = WhatsAppConversation::find($message->conversation_id);
 
-    Lead::find($conversation->lead_id)?->delete();
-    $conversation->delete();
-    $message->delete();
+    // Cleanup in `finally`: a failing assertion would otherwise leave the
+    // fixture Lead/Person behind in the real dev database.
+    try {
+        expect($message->sent_at->timestamp)->toBe($timestamp->timestamp);
+    } finally {
+        Lead::find($conversation->lead_id)?->delete();
+        $conversation->delete();
+        $message->delete();
+    }
 });
 
 /**
@@ -206,16 +209,18 @@ it('captures a media-only message and still creates its Lead', function () {
     $message = WhatsAppMessage::where('wa_message_id', $waMessageId)->first();
 
     expect($message)->not->toBeNull();
-    expect($message->body)->toBeNull();
-    expect($message->media_type)->toBe('image');
 
     $conversation = WhatsAppConversation::find($message->conversation_id);
 
-    expect($conversation->lead_id)->not->toBeNull();
-
-    Lead::find($conversation->lead_id)?->delete();
-    $conversation->delete();
-    $message->delete();
+    try {
+        expect($message->body)->toBeNull();
+        expect($message->media_type)->toBe('image');
+        expect($conversation->lead_id)->not->toBeNull();
+    } finally {
+        Lead::find($conversation->lead_id)?->delete();
+        $conversation->delete();
+        $message->delete();
+    }
 });
 
 it('stores an echo message without treating it as a new inbound conversation trigger differently', function () {

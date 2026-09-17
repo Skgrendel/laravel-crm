@@ -30,7 +30,11 @@ it('injects the call button when the lead has a phone number and the user can us
     withTemporaryExtensionForCallButton($admin->id, 'callbtn-test-101', function () use ($admin) {
         test()->actingAs($admin);
 
+        // `id` is required even though this test only cares about the phone:
+        // other addons listen on this same event (WhatsApp injects its chat
+        // tile here too) and a real Lead always has one.
         $lead = (object) [
+            'id' => 1,
             'person' => (object) [
                 'contact_numbers' => [
                     ['value' => '5219998887777', 'label' => 'work'],
@@ -54,7 +58,7 @@ it('renders nothing when the lead has no phone number', function () {
     withTemporaryExtensionForCallButton($admin->id, 'callbtn-test-101', function () use ($admin) {
         test()->actingAs($admin);
 
-        $lead = (object) ['person' => (object) ['contact_numbers' => []]];
+        $lead = (object) ['id' => 1, 'person' => (object) ['contact_numbers' => []]];
 
         $manager = app(ViewRenderEventManager::class);
 

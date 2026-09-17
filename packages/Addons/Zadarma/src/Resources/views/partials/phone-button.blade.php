@@ -74,9 +74,25 @@
     window.zadarmaOpenPhonePopup = function (dialNumber) {
         const url = @json(route('admin.zadarma.phone.show'));
 
-        let popup = window.open('', 'zadarma_softphone');
+        /**
+         * The features string is what makes this a popup window instead of
+         * a browser tab — without it `window.open` just opens a tab, and
+         * `resizeTo`/`moveTo` (see fitWindowToWidget in phone/show) don't
+         * apply to tabs either. Features are ignored when the named window
+         * already exists, so reopening still reuses the same softphone
+         * rather than resizing it out from under an active call.
+         */
+        let popup = window.open('', 'zadarma_softphone', 'popup=yes,width=380,height=640');
 
-        if (popup && popup.zdrmWebPhone && typeof popup.zdrmWebPhone.call === 'function') {
+        if (! popup) {
+            // Blocked by the browser: without this the navigation below
+            // throws and the click looks like it did nothing at all.
+            alert(@json(trans('zadarma::app.phone.popup-blocked')));
+
+            return;
+        }
+
+        if (popup.zdrmWebPhone && typeof popup.zdrmWebPhone.call === 'function') {
             // Already open and registered — dial directly, no navigation.
             if (dialNumber) {
                 popup.zdrmWebPhone.call(dialNumber);
