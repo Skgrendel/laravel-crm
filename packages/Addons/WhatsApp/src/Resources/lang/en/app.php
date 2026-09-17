@@ -38,6 +38,16 @@ return [
         'owner' => 'Handled by :name',
     ],
 
+    'mail' => [
+        'session-disconnected' => [
+            'subject' => 'WhatsApp disconnected — messages are not coming in',
+            'greeting' => 'Hi,',
+            'body' => 'The CRM\'s WhatsApp session disconnected. While it stays down no messages arrive and no new leads are created.',
+            'body-with-number' => 'The WhatsApp session for :number disconnected. While it stays down no messages arrive and no new leads are created.',
+            'action' => 'Check the session status',
+        ],
+    ],
+
     'settings' => [
         'index' => [
             'title' => 'WhatsApp',

@@ -90,13 +90,22 @@ class WhatsAppSettingRepository extends Repository
      * pushed via the `session.connected` / `session.disconnected` webhook
      * events. Used by the settings screen's status card (2.5).
      */
-    public function updateConnectionStatus(string $status, ?string $number = null): void
+    /**
+     * Returns whether this was an actual change of state. The microservice
+     * can re-announce the same status (reconnect loops, restarts), and
+     * callers use this to avoid alerting on every repeat.
+     */
+    public function updateConnectionStatus(string $status, ?string $number = null): bool
     {
         $settings = $this->getSettings();
+
+        $changed = $settings->last_status !== $status;
 
         $settings->update([
             'last_status' => $status,
             'connected_number' => $number,
         ]);
+
+        return $changed;
     }
 }

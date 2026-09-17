@@ -49,4 +49,10 @@ Route::controller(PhoneController::class)->prefix('zadarma/phone')->group(functi
  */
 Route::any('zadarma/webhook/{secret}', [WebhookController::class, 'handle'])
     ->name('admin.zadarma.webhook')
-    ->withoutMiddleware('user');
+    ->withoutMiddleware('user')
+    /**
+     * Same reasoning as the WhatsApp webhook: publicly reachable, so cap it
+     * well above real call volume rather than leaving it unbounded. Zadarma
+     * sends a handful of events per call.
+     */
+    ->middleware('throttle:120,1');

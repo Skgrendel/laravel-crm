@@ -10,6 +10,8 @@ addons propios de Krayin, sin pagar licencias de terceros.
 Documentación de detalle por addon:
 - [`docs/zadarma-addon.md`](docs/zadarma-addon.md) — Fase 1
 - [`docs/whatsapp-addon.md`](docs/whatsapp-addon.md) — Fase 2
+- [`docs/reporting-api.md`](docs/reporting-api.md) — campos custom de ventas
+  (migrados de Bitrix24) y la API de reportes que los expone
 
 ## Estructura organizacional (IMPORTANTE)
 

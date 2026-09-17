@@ -6,6 +6,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Webkul\Lead\Models\Lead;
+use Webkul\User\Repositories\UserRepository;
 
 /**
  * Same conventions as WebhookTest.php: real dev database, capture/restore
@@ -97,6 +98,50 @@ it('returns who the agent is talking to alongside the history', function () {
     }
 });
 
+/**
+ * Holding `whatsapp_chat` is permission to use the panel, not permission to
+ * use it on every Lead. Krayin scopes Leads per user and the broadcast
+ * channel enforces that too, but the REST endpoints did not — any agent
+ * could read, reply to and download attachments from a colleague's
+ * conversation by editing the id in the URL.
+ */
+it('refuses to open a conversation on a lead outside the agent\'s scope', function () {
+    $admin = getDefaultAdmin();
+    $conversation = createChatFixtureConversation();
+
+    $otherUser = app(UserRepository::class)->create([
+        'name'     => 'Chat Scope Test Agent',
+        'email'    => 'chat-scope-'.uniqid().'@example.com',
+        'password' => bcrypt('password'),
+        'status'   => 1,
+        'role_id'  => $admin->role_id,
+    ]);
+
+    // Captured and restored: this is the real admin row, shared by the
+    // whole suite — see feedback-test-state-isolation.
+    $originalViewPermission = $admin->view_permission;
+
+    try {
+        // Hand the Lead to somebody else and narrow the admin's own scope to
+        // just their own records, which is what a sales role looks like.
+        Lead::where('id', $conversation->lead_id)->update(['user_id' => $otherUser->id]);
+        $admin->update(['view_permission' => 'individual']);
+
+        test()->actingAs($admin)
+            ->getJson(route('admin.whatsapp.messages.index', $conversation->lead_id))
+            ->assertForbidden();
+
+        test()->actingAs($admin)
+            ->postJson(route('admin.whatsapp.messages.store', $conversation->lead_id), ['message' => 'hola'])
+            ->assertForbidden();
+    } finally {
+        $admin->update(['view_permission' => $originalViewPermission]);
+        Lead::where('id', $conversation->lead_id)->update(['user_id' => $admin->id]);
+        $otherUser->delete();
+        deleteChatFixture($conversation);
+    }
+});
+
 it('rejects sending a message to a lead with no conversation', function () {
     $admin = getDefaultAdmin();
 
@@ -140,7 +185,9 @@ it('sends an attachment, keeps a copy, and serves it back only through the lead 
         '*/send-media*' => Http::response(['waMessageId' => 'wa-media-'.uniqid()]),
     ]);
 
-    Storage::fake();
+    // The private disk specifically — attachments must never land on
+    // `public`, whose root is served without authentication.
+    Storage::fake('local');
 
     try {
         $response = test()->actingAs($admin)->postJson(
@@ -159,7 +206,10 @@ it('sends an attachment, keeps a copy, and serves it back only through the lead 
 
         // The copy the CRM keeps: WhatsApp is not an archive, and the
         // document trail belongs to the Lead.
-        Storage::assertExists($message->media_path);
+        Storage::disk('local')->assertExists($message->media_path);
+
+        // And it must not be reachable without going through `media()`.
+        Storage::disk('public')->assertMissing($message->media_path);
 
         // The file travels as the raw body, not multipart or base64.
         Http::assertSent(function ($request) {

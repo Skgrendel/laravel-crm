@@ -46,4 +46,12 @@ Route::controller(ChatController::class)->prefix('leads/{leadId}/whatsapp/messag
  */
 Route::post('whatsapp/webhook', [WebhookController::class, 'handle'])
     ->name('admin.whatsapp.webhook')
-    ->withoutMiddleware('user');
+    ->withoutMiddleware('user')
+    /**
+     * Throttled because this endpoint is reachable by anyone: the signature
+     * check rejects forgeries, but only *after* an HMAC over the whole body
+     * and a settings lookup, so unlimited requests are free CPU and database
+     * load for an attacker. The ceiling is far above what one WhatsApp
+     * session produces — a busy sales line is a few messages a minute.
+     */
+    ->middleware('throttle:120,1');

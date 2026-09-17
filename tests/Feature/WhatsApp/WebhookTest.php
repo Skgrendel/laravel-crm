@@ -1,7 +1,9 @@
 <?php
 
+use Addons\WhatsApp\Mail\SessionDisconnected;
 use Addons\WhatsApp\Models\WhatsAppConversation;
 use Addons\WhatsApp\Models\WhatsAppMessage;
+use Illuminate\Support\Facades\Mail;
 use Addons\WhatsApp\Repositories\WhatsAppSettingRepository;
 use Addons\WhatsApp\Services\WhatsAppWebhookSignature;
 use Webkul\Lead\Models\Lead;
@@ -96,6 +98,28 @@ it('records a session.connected event on the settings row', function () {
 
     expect($settings->last_status)->toBe('connected');
     expect($settings->connected_number)->toBe('5493511234567');
+});
+
+/**
+ * A dropped session is silent: the panel looks fine, messages simply stop.
+ * The alert is the only thing that surfaces it, and the de-duplication
+ * matters as much as the alert — the microservice re-announces
+ * `disconnected` on every reconnect attempt, and an alert that fires in a
+ * loop is one people learn to ignore.
+ */
+it('alerts the lead-capture owner the first time a session drops, and not again', function () {
+    Mail::fake();
+
+    whatsAppSettingsRepository()->getSettings()->update(['last_status' => 'connected']);
+
+    signedWhatsAppWebhookPost(['type' => 'session.disconnected'])->assertNoContent();
+
+    Mail::assertSent(SessionDisconnected::class, 1);
+
+    // Still disconnected: same state, no second alert.
+    signedWhatsAppWebhookPost(['type' => 'session.disconnected'])->assertNoContent();
+
+    Mail::assertSent(SessionDisconnected::class, 1);
 });
 
 it('creates a conversation, message and Lead from a first received message', function () {

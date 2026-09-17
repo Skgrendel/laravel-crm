@@ -94,6 +94,24 @@ class PhoneController extends Controller
 
         $lead = $this->phoneLeadMatcher->findLeadByPhone($request->input('number'));
 
+        /**
+         * Scoped like every other Lead read in the CRM: an agent restricted
+         * to their own records shouldn't learn that a colleague's Lead exists
+         * for this number. Answered as "not found" rather than 403 on
+         * purpose — a 403 would itself confirm the Lead exists, and for a
+         * screen-pop "no Lead you can open" is the meaningful answer anyway.
+         *
+         * The matcher itself stays unscoped: the finished-call webhook shares
+         * it and runs with no authenticated user.
+         */
+        if ($lead) {
+            $authorizedUserIds = bouncer()->getAuthorizedUserIds();
+
+            if ($authorizedUserIds && ! in_array($lead->user_id, $authorizedUserIds)) {
+                $lead = null;
+            }
+        }
+
         if (! $lead) {
             return response()->json(['found' => false]);
         }

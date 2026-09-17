@@ -38,6 +38,16 @@ return [
         'owner' => 'Atiende: :name',
     ],
 
+    'mail' => [
+        'session-disconnected' => [
+            'subject' => 'WhatsApp se desconectó — no se están recibiendo mensajes',
+            'greeting' => 'Hola,',
+            'body' => 'La sesión de WhatsApp del CRM se desconectó. Mientras siga así no entran mensajes ni se crean leads nuevos.',
+            'body-with-number' => 'La sesión de WhatsApp del número :number se desconectó. Mientras siga así no entran mensajes ni se crean leads nuevos.',
+            'action' => 'Revisar el estado de la sesión',
+        ],
+    ],
+
     'settings' => [
         'index' => [
             'title' => 'WhatsApp',

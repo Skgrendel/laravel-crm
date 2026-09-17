@@ -24,6 +24,40 @@ use Webkul\Lead\Repositories\LeadRepository;
  */
 class ChatController extends Controller
 {
+    /**
+     * Named explicitly instead of relying on the default disk: Laravel's
+     * default is `public`, whose root is symlinked into `public/storage` and
+     * served with no authentication at all. Customer documents landing there
+     * would be downloadable by anyone with the URL, which would quietly
+     * defeat the authorisation on `media()` below.
+     */
+    protected const MEDIA_DISK = 'local';
+
+    /**
+     * What a sales conversation legitimately carries: photos of documents,
+     * PDFs, the odd spreadsheet or voice note. Deliberately excludes
+     * archives and anything executable.
+     */
+    protected const ALLOWED_MIME_TYPES = [
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+        'image/gif',
+        'video/mp4',
+        'video/quicktime',
+        'audio/mpeg',
+        'audio/ogg',
+        'audio/mp4',
+        'audio/wav',
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/plain',
+        'text/csv',
+    ];
+
     public function __construct(
         protected WhatsAppConversationRepository $whatsAppConversationRepository,
         protected WhatsAppMessageRepository $whatsAppMessageRepository,
@@ -84,7 +118,20 @@ class ChatController extends Controller
             // Either is enough on its own: a bare caption-less file is a
             // normal thing to send, and so is plain text.
             'message'    => 'required_without:attachment|nullable|string',
-            'attachment' => 'required_without:message|nullable|file|max:16384',
+            'attachment' => [
+                'required_without:message',
+                'nullable',
+                'file',
+                'max:16384',
+                /**
+                 * Allowlist rather than a blocklist. `media()` serves files
+                 * as downloads, so a hostile SVG or HTML can't execute in
+                 * the CRM's origin — but these files also land on a
+                 * customer's phone, and there is no reason for this channel
+                 * to carry executables or scripts at all.
+                 */
+                'mimetypes:'.implode(',', self::ALLOWED_MIME_TYPES),
+            ],
         ]);
 
         $conversation = $this->conversationForLead($leadId);
@@ -142,7 +189,7 @@ class ChatController extends Controller
         $media = $attachment
             ? [
                 'media_type' => $this->mediaTypeFor($attachment->getMimeType()),
-                'media_path' => $attachment->store('whatsapp/'.$conversation->id),
+                'media_path' => $attachment->store('whatsapp/'.$conversation->id, self::MEDIA_DISK),
                 'media_name' => $attachment->getClientOriginalName(),
                 'media_mime' => $attachment->getMimeType(),
             ]
@@ -247,9 +294,11 @@ class ChatController extends Controller
 
         abort_if(! $message || ! $message->media_path, 404);
 
-        abort_if(! Storage::exists($message->media_path), 404);
+        $disk = Storage::disk(self::MEDIA_DISK);
 
-        return Storage::download($message->media_path, $message->media_name);
+        abort_if(! $disk->exists($message->media_path), 404);
+
+        return $disk->download($message->media_path, $message->media_name);
     }
 
     /**
@@ -271,8 +320,36 @@ class ChatController extends Controller
         }
     }
 
+    /**
+     * A user who may use the chat panel is not automatically allowed to use
+     * it on *every* Lead. Krayin scopes Leads per user
+     * (`LeadController::view` redirects away, and the broadcast channel in
+     * routes/channels.php enforces the same rule), but nothing in the route
+     * layer applies that per record — without this, any agent holding the
+     * `whatsapp_chat` permission could read, reply to, and download
+     * attachments from a colleague's conversation just by editing the id in
+     * the URL.
+     *
+     * An unknown Lead is left alone: there is nothing to disclose, and the
+     * panel legitimately asks about Leads with no conversation yet.
+     */
+    protected function authorizeLead(int $leadId): void
+    {
+        $lead = app(LeadRepository::class)->find($leadId);
+
+        if (! $lead) {
+            return;
+        }
+
+        $authorizedUserIds = bouncer()->getAuthorizedUserIds();
+
+        abort_if($authorizedUserIds && ! in_array($lead->user_id, $authorizedUserIds), 403);
+    }
+
     protected function conversationForLead(int $leadId)
     {
+        $this->authorizeLead($leadId);
+
         return $this->whatsAppConversationRepository
             ->getModel()
             ->newQuery()
