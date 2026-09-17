@@ -65,6 +65,44 @@ class WhatsAppLeadCreator
     }
 
     /**
+     * An agent claiming a conversation from the inbox's "unassigned" tab.
+     *
+     * A conversation ends up with no Lead when capture could not resolve an
+     * owner (empty assignment pool, or the Lead was deleted afterwards). The
+     * messages are all still there — this gives them a Lead again, owned by
+     * whoever picked it up, so it stops being invisible to every scoped view.
+     */
+    public function claimForUser($conversation, int $userId)
+    {
+        if ($conversation->lead_id) {
+            return null;
+        }
+
+        $person = $conversation->person_id
+            ? $this->personRepository->find($conversation->person_id)
+            : $this->findPersonByPhone($conversation->phone_number);
+
+        $lead = $person
+            ? $person->leads()->orderByDesc('updated_at')->first()
+            : null;
+
+        if (! $lead) {
+            $lead = $this->createLead($conversation->phone_number, $person, $userId);
+        }
+
+        if (! $lead) {
+            return null;
+        }
+
+        $conversation->update([
+            'person_id' => $lead->person_id,
+            'lead_id' => $lead->id,
+        ]);
+
+        return $lead;
+    }
+
+    /**
      * Same matching rule as the rest of the CRM's phone-based lookups
      * (Zadarma's PhoneLeadMatcher, Bryan's lead-unification criteria):
      * digits-only comparison against the last significant digits, since
@@ -99,18 +137,19 @@ class WhatsAppLeadCreator
 
     /**
      * Creates the Lead (and Person, if none matched) for a first-contact
-     * WhatsApp conversation. Requires `default_owner_id` configured on the
-     * settings screen — there's no authenticated agent in this webhook
-     * context to fall back to, and `leads.user_id` is required (not
-     * nullable). Without it, the conversation/messages are still recorded;
-     * the Lead link is simply backfilled once an admin configures it.
+     * WhatsApp conversation. The owner comes from `AgentAssigner` (fixed,
+     * round-robin or least-loaded) — there's no authenticated agent in this
+     * webhook context to fall back to, and `leads.user_id` is required (not
+     * nullable). If no owner can be resolved at all, the conversation and
+     * messages are still recorded; the Lead link is backfilled once an
+     * admin configures assignment.
      */
-    protected function createLead(string $phoneNumber, $person = null)
+    protected function createLead(string $phoneNumber, $person = null, ?int $forcedOwnerId = null)
     {
-        $settings = $this->whatsAppSettingRepository->getSettings();
+        $ownerId = $forcedOwnerId ?: app(AgentAssigner::class)->nextOwnerId();
 
-        if (empty($settings->default_owner_id)) {
-            Log::warning('WhatsApp lead capture: no default_owner_id configured, skipping Lead creation.', [
+        if (empty($ownerId)) {
+            Log::warning('WhatsApp lead capture: no owner could be assigned, skipping Lead creation.', [
                 'phone_number' => $phoneNumber,
             ]);
 
@@ -128,7 +167,7 @@ class WhatsAppLeadCreator
             'title' => "WhatsApp {$phoneNumber}",
             'lead_value' => 0,
             'status' => 1,
-            'user_id' => $settings->default_owner_id,
+            'user_id' => $ownerId,
             'lead_pipeline_id' => $pipeline->id,
             'lead_pipeline_stage_id' => $stage->id,
             'lead_source_id' => $source->id,
@@ -142,7 +181,7 @@ class WhatsAppLeadCreator
                 'name' => "WhatsApp {$phoneNumber}",
                 'emails' => [],
                 'contact_numbers' => [['label' => 'work', 'value' => $phoneNumber]],
-                'user_id' => $settings->default_owner_id,
+                'user_id' => $ownerId,
             ];
 
         return $this->leadRepository->create($data);

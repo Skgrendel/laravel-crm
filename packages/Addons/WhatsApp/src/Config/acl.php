@@ -32,4 +32,16 @@ return [
         ],
         'sort' => 9,
     ],
+
+    [
+        'key' => 'whatsapp_inbox',
+        'name' => 'whatsapp::app.acl.inbox-title',
+        'route' => [
+            'admin.whatsapp.inbox.index',
+            'admin.whatsapp.inbox.list',
+            'admin.whatsapp.inbox.read',
+            'admin.whatsapp.inbox.claim',
+        ],
+        'sort' => 10,
+    ],
 ];

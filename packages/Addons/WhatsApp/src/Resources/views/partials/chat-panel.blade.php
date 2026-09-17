@@ -1,7 +1,16 @@
-{{-- Wrapped like core's own action tiles, which each sit in a plain div. --}}
-<div>
-    <v-whatsapp-chat lead-id="{{ $lead->id }}"></v-whatsapp-chat>
-</div>
+{{--
+    Does double duty: included with a `$lead` it renders the action tile for
+    that Lead, and included without one it contributes only the styles and
+    component definitions. The inbox needs the second form — it renders
+    `v-whatsapp-thread` itself, beside the conversation list, and would
+    otherwise have no definition for it.
+--}}
+@if (! empty($lead))
+    {{-- Wrapped like core's own action tiles, which each sit in a plain div. --}}
+    <div>
+        <v-whatsapp-chat lead-id="{{ $lead->id }}"></v-whatsapp-chat>
+    </div>
+@endif
 
 @pushOnce('styles')
     {{--
@@ -246,37 +255,60 @@
                 with no coordinates.
             --}}
             <Teleport to="body">
-            <v-modal
-                ref="chatModal"
-                size="medium"
-                position="center"
-                @open="onOpen"
-                @close="onClose"
-            >
-            <template v-slot:header="{ toggle }">
-                <div class="whatsapp-chat-header flex items-center justify-between gap-2.5 px-4 py-3">
-                    <div class="flex min-w-0 items-center gap-3">
-                        <span class="whatsapp-avatar">@{{ contactInitial }}</span>
+                <v-modal
+                    ref="chatModal"
+                    size="medium"
+                    position="center"
+                >
+                    <template v-slot:content>
+                        {{--
+                            The thread only mounts when the modal opens (the
+                            content slot lives behind the modal's `v-if`), so
+                            loading, polling and the Echo subscription all
+                            start and stop with it. No open/close plumbing.
+                        --}}
+                        <v-whatsapp-thread
+                            :lead-id="leadId"
+                            show-close
+                            @close="$refs.chatModal.close()"
+                        ></v-whatsapp-thread>
+                    </template>
+                </v-modal>
+            </Teleport>
+        </div>
+    </script>
 
-                        <div class="min-w-0">
-                            <p class="truncate text-sm font-semibold text-gray-800 dark:text-white">
-                                @{{ contact ? contact.name : chatTitle }}
-                            </p>
+    {{--
+        The conversation itself, independent of how it is presented: the Lead
+        view wraps it in a modal, the inbox renders it inline beside the list.
+    --}}
+    <script
+        type="text/x-template"
+        id="v-whatsapp-thread-template"
+    >
+        <div class="flex flex-col">
+            <div class="whatsapp-chat-header flex items-center justify-between gap-2.5 px-4 py-3">
+                <div class="flex min-w-0 items-center gap-3">
+                    <span class="whatsapp-avatar">@{{ contactInitial }}</span>
 
-                            <p class="truncate text-xs text-gray-500 dark:text-gray-400">
-                                @{{ contactSubtitle }}
-                            </p>
-                        </div>
+                    <div class="min-w-0">
+                        <p class="truncate text-sm font-semibold text-gray-800 dark:text-white">
+                            @{{ contact ? contact.name : chatTitle }}
+                        </p>
+
+                        <p class="truncate text-xs text-gray-500 dark:text-gray-400">
+                            @{{ contactSubtitle }}
+                        </p>
                     </div>
-
-                    <span
-                        class="icon-cross-large cursor-pointer text-3xl hover:rounded-md hover:bg-gray-200 dark:text-white dark:hover:bg-gray-950"
-                        @click="toggle"
-                    ></span>
                 </div>
-            </template>
 
-            <template v-slot:content>
+                <span
+                    v-if="showClose"
+                    class="icon-cross-large cursor-pointer text-3xl hover:rounded-md hover:bg-gray-200 dark:text-white dark:hover:bg-gray-950"
+                    @click="$emit('close')"
+                ></span>
+            </div>
+
             <div
                 ref="scrollArea"
                 class="whatsapp-thread flex max-h-[60vh] min-h-[360px] flex-col gap-1.5 overflow-y-auto p-4"
@@ -380,19 +412,32 @@
                     @{{ sendLabel }}
                 </button>
                 </div>
-                </div>
-            </template>
-            </v-modal>
-            </Teleport>
+            </div>
         </div>
     </script>
 
     <script type="module">
+        /**
+         * Tile + modal only. Everything about the conversation lives in
+         * `v-whatsapp-thread`, so the inbox can render the same thread
+         * inline without dragging a modal along with it.
+         */
         app.component('v-whatsapp-chat', {
             template: '#v-whatsapp-chat-template',
 
             props: {
                 leadId: [String, Number],
+            },
+        });
+
+        app.component('v-whatsapp-thread', {
+            template: '#v-whatsapp-thread-template',
+
+            emits: ['close'],
+
+            props: {
+                leadId: [String, Number],
+                showClose: { type: Boolean, default: false },
             },
 
             data() {
@@ -460,6 +505,8 @@
 
             mounted() {
                 this.load();
+
+                this.startPolling();
 
                 this.subscribeToLiveUpdates();
             },
@@ -660,22 +707,6 @@
                     });
                 },
 
-                /**
-                 * The modal only renders its content while open, so the
-                 * scroll area doesn't exist until now — any scroll done
-                 * while it was closed was a no-op.
-                 */
-                onOpen() {
-                    this.refresh();
-
-                    this.startPolling();
-
-                    this.scrollToBottom();
-                },
-
-                onClose() {
-                    this.stopPolling();
-                },
             },
         });
     </script>

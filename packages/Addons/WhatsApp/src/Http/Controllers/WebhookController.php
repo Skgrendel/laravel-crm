@@ -153,6 +153,12 @@ class WebhookController extends Controller
 
         $this->whatsAppConversationRepository->touchLastMessageAt($conversation->id, $sentAt);
 
+        $this->whatsAppConversationRepository->recordMessage(
+            $conversation->id,
+            $payload['messageType'] ?? 'received',
+            $sentAt
+        );
+
         if ($conversation->lead_id) {
             $this->broadcastSafely($message, $conversation->lead_id);
         }

@@ -26,6 +26,9 @@ class WhatsAppSetting extends Model implements WhatsAppSettingContract
         'api_key',
         'webhook_secret',
         'default_owner_id',
+        'assignment_mode',
+        'assignment_user_ids',
+        'assignment_cursor',
         'last_status',
         'connected_number',
     ];
@@ -39,6 +42,8 @@ class WhatsAppSetting extends Model implements WhatsAppSettingContract
         'enabled'    => 'boolean',
         'api_key'    => 'encrypted',
         'webhook_secret' => 'encrypted',
+        'assignment_user_ids' => 'array',
+        'assignment_cursor' => 'integer',
     ];
 
     /**

@@ -35,13 +35,20 @@ class SettingsController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'enabled'          => 'sometimes|boolean',
-            'session_id'       => 'nullable|string',
-            'service_url'      => 'nullable|url',
-            'default_owner_id' => 'nullable|exists:users,id',
+            'enabled'             => 'sometimes|boolean',
+            'session_id'          => 'nullable|string',
+            'service_url'         => 'nullable|url',
+            'default_owner_id'    => 'nullable|exists:users,id',
+            'assignment_mode'     => 'nullable|in:fixed,round_robin,least_loaded',
+            'assignment_user_ids' => 'nullable|array',
+            'assignment_user_ids.*' => 'integer|exists:users,id',
         ]);
 
         $data['enabled'] = $request->boolean('enabled');
+
+        // Absent from the payload means "nobody selected", which has to
+        // clear the pool rather than silently keep the previous one.
+        $data['assignment_user_ids'] = $request->input('assignment_user_ids', []);
 
         $settings = $this->whatsAppSettingRepository->getSettings();
 

@@ -9,6 +9,22 @@ return [
     'acl' => [
         'title' => 'WhatsApp',
         'chat-title' => 'WhatsApp Chat',
+        'inbox-title' => 'WhatsApp Inbox',
+    ],
+
+    'inbox' => [
+        'title' => 'WhatsApp Inbox',
+        'empty' => 'No conversations here.',
+        'pick-one' => 'Pick a conversation from the list.',
+        'claim' => 'Take',
+        'claiming' => 'Taking…',
+        'already-assigned' => 'This conversation already has an owner.',
+        'claim-failed' => 'Could not take the conversation. Check that a pipeline and stage are configured.',
+        'unassigned' => 'Unassigned',
+        'handled' => 'Handled',
+        'scope-mine' => 'Mine',
+        'scope-unassigned' => 'Unassigned',
+        'scope-all' => 'All',
     ],
 
     'chat' => [
@@ -68,6 +84,12 @@ return [
             'lead-capture-title' => 'Lead capture',
             'lead-capture-info' => 'New leads created automatically from a first WhatsApp message are assigned to this agent until manually reassigned — required for passive lead capture to work.',
             'default-owner' => 'Default owner',
+            'assignment-mode' => 'Assignment mode',
+            'assignment-fixed' => 'Fixed — everything to the default owner',
+            'assignment-round_robin' => 'Round-robin — take turns',
+            'assignment-least_loaded' => 'By load — to whoever has fewest open leads',
+            'assignment-pool' => 'Agents receiving leads',
+            'assignment-pool-info' => 'Only applies in round-robin or by-load mode. With nobody selected, or everyone selected being inactive, the default owner is used.',
             'status-title' => 'Session status',
             'status-connected' => 'Connected (:number)',
             'status-disconnected' => 'Disconnected',

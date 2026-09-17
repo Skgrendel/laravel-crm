@@ -27,6 +27,10 @@ class WhatsAppConversation extends Model implements WhatsAppConversationContract
         'person_id',
         'lead_id',
         'last_message_at',
+        'last_inbound_at',
+        'last_outbound_at',
+        'agent_last_read_at',
+        'first_response_seconds',
     ];
 
     /**
@@ -36,7 +40,34 @@ class WhatsAppConversation extends Model implements WhatsAppConversationContract
      */
     protected $casts = [
         'last_message_at' => 'datetime',
+        'last_inbound_at' => 'datetime',
+        'last_outbound_at' => 'datetime',
+        'agent_last_read_at' => 'datetime',
+        'first_response_seconds' => 'integer',
     ];
+
+    /**
+     * The customer wrote last and nobody has answered. This is what the
+     * inbox sorts on — a conversation nobody is waiting on is not urgent
+     * however recent it is.
+     */
+    public function isWaiting(): bool
+    {
+        if (! $this->last_inbound_at) {
+            return false;
+        }
+
+        return ! $this->last_outbound_at || $this->last_outbound_at < $this->last_inbound_at;
+    }
+
+    public function isUnread(): bool
+    {
+        if (! $this->last_inbound_at) {
+            return false;
+        }
+
+        return ! $this->agent_last_read_at || $this->agent_last_read_at < $this->last_inbound_at;
+    }
 
     /**
      * The Person matched to this conversation's phone number, if any.

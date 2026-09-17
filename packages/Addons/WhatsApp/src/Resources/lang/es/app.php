@@ -9,6 +9,22 @@ return [
     'acl' => [
         'title' => 'WhatsApp',
         'chat-title' => 'Chat de WhatsApp',
+        'inbox-title' => 'Bandeja de WhatsApp',
+    ],
+
+    'inbox' => [
+        'title' => 'Bandeja WhatsApp',
+        'empty' => 'No hay conversaciones acá.',
+        'pick-one' => 'Elegí una conversación de la lista.',
+        'claim' => 'Tomar',
+        'claiming' => 'Tomando…',
+        'already-assigned' => 'Esta conversación ya tiene dueño.',
+        'claim-failed' => 'No se pudo tomar la conversación. Revisá que haya un pipeline y una etapa configurados.',
+        'unassigned' => 'Sin asignar',
+        'handled' => 'Atendida',
+        'scope-mine' => 'Mías',
+        'scope-unassigned' => 'Sin asignar',
+        'scope-all' => 'Todas',
     ],
 
     'chat' => [
@@ -68,6 +84,12 @@ return [
             'lead-capture-title' => 'Captura de leads',
             'lead-capture-info' => 'Los leads nuevos creados automáticamente desde un primer mensaje de WhatsApp se asignan a este agente hasta que se reasignen manualmente — requerido para que la captura pasiva de leads funcione.',
             'default-owner' => 'Dueño por defecto',
+            'assignment-mode' => 'Modo de asignación',
+            'assignment-fixed' => 'Fijo — todo al dueño por defecto',
+            'assignment-round_robin' => 'Rotativo — reparte por turnos',
+            'assignment-least_loaded' => 'Por carga — al que menos leads abiertos tiene',
+            'assignment-pool' => 'Agentes que reciben leads',
+            'assignment-pool-info' => 'Solo aplica en modo rotativo o por carga. Si no hay ninguno seleccionado, o si los seleccionados están inactivos, se usa el dueño por defecto.',
             'status-title' => 'Estado de la sesión',
             'status-connected' => 'Conectado (:number)',
             'status-disconnected' => 'Desconectado',

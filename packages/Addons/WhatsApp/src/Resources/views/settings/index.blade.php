@@ -145,6 +145,26 @@
 
                 <x-admin::form.control-group>
                     <x-admin::form.control-group.label>
+                        @lang('whatsapp::app.settings.index.assignment-mode')
+                    </x-admin::form.control-group.label>
+
+                    <x-admin::form.control-group.control
+                        type="select"
+                        id="assignment_mode"
+                        name="assignment_mode"
+                        :label="trans('whatsapp::app.settings.index.assignment-mode')"
+                    >
+                        @foreach (['fixed', 'round_robin', 'least_loaded'] as $mode)
+                            <option
+                                value="{{ $mode }}"
+                                @selected(($settings->assignment_mode ?? 'fixed') === $mode)
+                            >@lang('whatsapp::app.settings.index.assignment-'.$mode)</option>
+                        @endforeach
+                    </x-admin::form.control-group.control>
+                </x-admin::form.control-group>
+
+                <x-admin::form.control-group>
+                    <x-admin::form.control-group.label>
                         @lang('whatsapp::app.settings.index.default-owner')
                     </x-admin::form.control-group.label>
 
@@ -164,6 +184,35 @@
                         @endforeach
                     </x-admin::form.control-group.control>
                 </x-admin::form.control-group>
+
+                <div>
+                    <p class="mb-1 text-sm font-medium text-gray-800 dark:text-white">
+                        @lang('whatsapp::app.settings.index.assignment-pool')
+                    </p>
+
+                    <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">
+                        @lang('whatsapp::app.settings.index.assignment-pool-info')
+                    </p>
+
+                    @php
+                        $pool = $settings->assignment_user_ids ?? [];
+                    @endphp
+
+                    <div class="flex flex-col gap-1.5">
+                        @foreach ($users as $user)
+                            <label class="flex items-center gap-2 text-sm dark:text-gray-300">
+                                <input
+                                    type="checkbox"
+                                    name="assignment_user_ids[]"
+                                    value="{{ $user->id }}"
+                                    @checked(in_array($user->id, $pool))
+                                />
+
+                                {{ $user->name }}
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
             </div>
         </div>
     </x-admin::form>

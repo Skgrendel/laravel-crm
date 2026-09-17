@@ -39,4 +39,64 @@ class WhatsAppConversationRepository extends Repository
             })
             ->update(['last_message_at' => $sentAt]);
     }
+
+    /**
+     * Keeps the inbox columns in step with a message that was just stored.
+     *
+     * `echo` counts as outbound: it is the agent replying from their phone
+     * instead of the CRM. Treating it as anything else would leave the
+     * conversation showing as unanswered in the inbox while the customer
+     * already has a reply — the fastest way to make agents stop trusting
+     * the list.
+     */
+    public function recordMessage(int $conversationId, string $type, \DateTimeInterface $sentAt): void
+    {
+        $conversation = $this->model->newQuery()->find($conversationId);
+
+        if (! $conversation) {
+            return;
+        }
+
+        $isInbound = $type === 'received';
+        $column = $isInbound ? 'last_inbound_at' : 'last_outbound_at';
+
+        $updates = [];
+
+        if (! $conversation->{$column} || $conversation->{$column} < $sentAt) {
+            $updates[$column] = $sentAt;
+        }
+
+        /**
+         * Set once and never recomputed: the first reply is a historical
+         * fact, and later replies in the same conversation are not "first
+         * responses" no matter how the thread evolves.
+         */
+        if (
+            ! $isInbound
+            && $conversation->first_response_seconds === null
+            && $conversation->last_inbound_at
+        ) {
+            $seconds = $sentAt->getTimestamp() - $conversation->last_inbound_at->getTimestamp();
+
+            if ($seconds >= 0) {
+                $updates['first_response_seconds'] = $seconds;
+            }
+        }
+
+        if ($updates) {
+            $conversation->update($updates);
+        }
+    }
+
+    /**
+     * Marks the conversation as read up to now. Read state is only moved
+     * forward — an agent opening an old conversation should not make newer
+     * messages look read.
+     */
+    public function markAsRead(int $conversationId): void
+    {
+        $this->model->newQuery()
+            ->whereKey($conversationId)
+            ->update(['agent_last_read_at' => now()]);
+    }
 }

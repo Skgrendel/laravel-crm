@@ -1,6 +1,7 @@
 <?php
 
 use Addons\WhatsApp\Http\Controllers\ChatController;
+use Addons\WhatsApp\Http\Controllers\InboxController;
 use Addons\WhatsApp\Http\Controllers\SessionController;
 use Addons\WhatsApp\Http\Controllers\SettingsController;
 use Addons\WhatsApp\Http\Controllers\WebhookController;
@@ -24,6 +25,20 @@ Route::prefix('settings/whatsapp')->group(function () {
 
         Route::post('reconnect', 'reconnect')->name('admin.settings.whatsapp.session.reconnect');
     });
+});
+
+/**
+ * Unified inbox (Fase 3.2) — conversations across every Lead, ordered by
+ * who has been waiting longest.
+ */
+Route::controller(InboxController::class)->prefix('whatsapp/inbox')->group(function () {
+    Route::get('', 'index')->name('admin.whatsapp.inbox.index');
+
+    Route::get('list', 'list')->name('admin.whatsapp.inbox.list');
+
+    Route::post('{conversationId}/read', 'markRead')->name('admin.whatsapp.inbox.read');
+
+    Route::post('{conversationId}/claim', 'claim')->name('admin.whatsapp.inbox.claim');
 });
 
 /**

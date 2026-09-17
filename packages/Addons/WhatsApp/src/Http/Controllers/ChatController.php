@@ -211,6 +211,8 @@ class ChatController extends Controller
 
         $this->whatsAppConversationRepository->touchLastMessageAt($conversation->id, $sentAt);
 
+        $this->whatsAppConversationRepository->recordMessage($conversation->id, 'sent_api', $sentAt);
+
         $this->broadcastSafely($message, $leadId);
 
         return response()->json([

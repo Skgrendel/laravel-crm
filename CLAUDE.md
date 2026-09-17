@@ -14,6 +14,8 @@ Documentación de detalle por addon:
   (migrados de Bitrix24) y la API de reportes que los expone
 - [`docs/deployment.md`](docs/deployment.md) — checklist de puesta en
   producción (sigue todo en local por ahora)
+- [`docs/fase-3-operacion.md`](docs/fase-3-operacion.md) — Fase 3: bandeja
+  unificada, adjuntos entrantes, asignación automática y SLA
 
 ## Estructura organizacional (IMPORTANTE)
 
@@ -40,6 +42,11 @@ instalado 2 veces con configuración distinta por instalación.
 ### Fase 1 — Zadarma (primero, más simple, API oficial) — ver docs/zadarma-addon.md
 Checkpoint: los 4 vendedores de ACOFICUM llamando desde el CRM con actividad
 registrada correctamente, antes de tocar WhatsApp.
+
+### Fase 3 — Operación diaria — ver docs/fase-3-operacion.md
+Las fases 1 y 2 construyen los canales; la 3 construye el trabajo diario encima
+de ellos (bandeja unificada, adjuntos entrantes, asignación, tiempo de primera
+respuesta). Planificada, sin empezar.
 
 ### Fase 2 — WhatsApp — ver docs/whatsapp-addon.md
 Checkpoint intermedio: lead capture pasivo funcionando en producción (2.2) antes
