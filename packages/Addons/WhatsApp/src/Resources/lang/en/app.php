@@ -8,6 +8,20 @@ return [
 
     'acl' => [
         'title' => 'WhatsApp',
+        'chat-title' => 'WhatsApp Chat',
+    ],
+
+    'chat' => [
+        'title' => 'WhatsApp',
+        'placeholder' => 'Type a message…',
+        'send-btn' => 'Send',
+        'no-conversation' => 'This Lead has no WhatsApp conversation yet.',
+        'not-configured' => 'WhatsApp isn\'t fully configured yet. Ask an admin to set it up in Settings.',
+        'send-failed' => 'Could not send the message: :error',
+        'empty' => 'No messages yet.',
+        'type-received' => 'Received',
+        'type-sent_api' => 'Sent from CRM',
+        'type-echo' => 'Sent from phone',
     ],
 
     'settings' => [

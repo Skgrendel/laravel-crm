@@ -1,5 +1,6 @@
 <?php
 
+use Addons\WhatsApp\Http\Controllers\ChatController;
 use Addons\WhatsApp\Http\Controllers\SettingsController;
 use Addons\WhatsApp\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
@@ -10,6 +11,15 @@ Route::prefix('settings/whatsapp')->group(function () {
 
         Route::put('', 'update')->name('admin.settings.whatsapp.update');
     });
+});
+
+/**
+ * Chat panel (Fase 2.3), nested under the Lead it belongs to.
+ */
+Route::controller(ChatController::class)->prefix('leads/{leadId}/whatsapp/messages')->group(function () {
+    Route::get('', 'index')->name('admin.whatsapp.messages.index');
+
+    Route::post('', 'store')->name('admin.whatsapp.messages.store');
 });
 
 /**

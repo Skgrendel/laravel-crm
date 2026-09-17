@@ -5,6 +5,7 @@ namespace Addons\WhatsApp\Http\Controllers;
 use Addons\WhatsApp\Repositories\WhatsAppConversationRepository;
 use Addons\WhatsApp\Repositories\WhatsAppMessageRepository;
 use Addons\WhatsApp\Repositories\WhatsAppSettingRepository;
+use Addons\WhatsApp\Events\WhatsAppMessageReceived;
 use Addons\WhatsApp\Services\WhatsAppLeadCreator;
 use Addons\WhatsApp\Services\WhatsAppWebhookSignature;
 use Carbon\Carbon;
@@ -85,7 +86,7 @@ class WebhookController extends Controller
             ? Carbon::createFromTimestamp($payload['timestamp'])
             : now();
 
-        $this->whatsAppMessageRepository->create([
+        $message = $this->whatsAppMessageRepository->create([
             'conversation_id' => $conversation->id,
             'wa_message_id' => $waMessageId,
             'type' => $payload['messageType'] ?? 'received',
@@ -94,5 +95,9 @@ class WebhookController extends Controller
         ]);
 
         $this->whatsAppConversationRepository->touchLastMessageAt($conversation->id, $sentAt);
+
+        if ($conversation->lead_id) {
+            broadcast(new WhatsAppMessageReceived($message, $conversation->lead_id));
+        }
     }
 }

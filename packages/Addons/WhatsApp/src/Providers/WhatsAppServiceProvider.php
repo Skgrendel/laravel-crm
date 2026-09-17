@@ -5,8 +5,10 @@ namespace Addons\WhatsApp\Providers;
 use Diglactic\Breadcrumbs\Breadcrumbs;
 use Diglactic\Breadcrumbs\Generator as BreadcrumbTrail;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Webkul\Core\ViewRenderEventManager;
 
 class WhatsAppServiceProvider extends ServiceProvider
 {
@@ -29,7 +31,33 @@ class WhatsAppServiceProvider extends ServiceProvider
 
         $this->registerBreadcrumbs();
 
+        $this->registerChatPanel();
+
         $this->app->register(ModuleServiceProvider::class);
+    }
+
+    /**
+     * Inject the chat panel (Fase 2.3) into every Lead's view via Krayin's
+     * `view_render_event` extension point, without touching core's
+     * `leads/view.blade.php`. Shown for any Lead the user can already see —
+     * an empty conversation just renders an empty panel; there's no
+     * separate "this Lead uses WhatsApp" flag to gate on.
+     */
+    protected function registerChatPanel(): void
+    {
+        Event::listen('admin.leads.view.right.before', function (ViewRenderEventManager $viewRenderEventManager) {
+            if (! bouncer()->hasPermission('whatsapp_chat')) {
+                return;
+            }
+
+            $lead = $viewRenderEventManager->getParam('lead');
+
+            if (! $lead) {
+                return;
+            }
+
+            $viewRenderEventManager->addTemplate(view('whatsapp::partials.chat-panel', ['lead' => $lead])->render());
+        });
     }
 
     /**
