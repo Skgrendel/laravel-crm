@@ -27,6 +27,18 @@ class ZadarmaClient
     }
 
     /**
+     * Issue a temporary (72h) WebRTC key for a SIP extension, used to
+     * initialize the browser softphone widget without ever exposing the
+     * account's real API credentials to the browser.
+     */
+    public function getWebrtcKey(string $sipLogin): string
+    {
+        $data = $this->get('/v1/webrtc/get_key/', ['sip' => $sipLogin]);
+
+        return $data['key'];
+    }
+
+    /**
      * Perform a signed GET request against the Zadarma API.
      */
     public function get(string $method, array $params = []): array

@@ -71,6 +71,25 @@
                     url="{{ route('admin.zadarma.webhook', $settings->webhook_secret) }}"
                 ></v-zadarma-webhook-url>
             </div>
+
+            <!-- Extension mapping card -->
+            <div class="rounded-lg border border-gray-300 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                <p class="mb-1 text-base font-semibold text-gray-800 dark:text-white">
+                    @lang('zadarma::app.settings.index.extensions-title')
+                </p>
+
+                <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">
+                    @lang('zadarma::app.settings.index.extensions-info')
+                </p>
+
+                <v-zadarma-extensions
+                    :agents="{{ $users->map(fn ($user) => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'extension' => optional($extensionMappings->get($user->id))->extension,
+                    ])->values()->toJson() }}"
+                ></v-zadarma-extensions>
+            </div>
         </div>
     </x-admin::form>
 
@@ -259,6 +278,85 @@
                                     });
                             },
                         });
+                    },
+                },
+            });
+        </script>
+
+        <script
+            type="text/x-template"
+            id="v-zadarma-extensions-template"
+        >
+            <div class="flex flex-col gap-2.5">
+                <div
+                    v-for="agent in agents"
+                    :key="agent.id"
+                    class="flex items-center gap-4"
+                >
+                    <x-admin::avatar ::name="agent.name" />
+
+                    <span class="flex-1 text-sm text-gray-800 dark:text-white">
+                        @{{ agent.name }}
+                    </span>
+
+                    <input
+                        type="text"
+                        class="control h-9 w-32 rounded-md border px-3 py-2 text-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
+                        v-model="agent.extension"
+                        placeholder="101"
+                        maxlength="20"
+                    />
+                </div>
+
+                <div class="mt-2 flex items-center gap-2.5">
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        :disabled="isSaving"
+                        @click="save"
+                    >
+                        @{{ isSaving ? savingLabel : saveMappingLabel }}
+                    </button>
+                </div>
+            </div>
+        </script>
+
+        <script type="module">
+            app.component('v-zadarma-extensions', {
+                template: '#v-zadarma-extensions-template',
+
+                props: {
+                    agents: Array,
+                },
+
+                data() {
+                    return {
+                        isSaving: false,
+                        saveMappingLabel: @json(trans('zadarma::app.settings.index.save-mapping-btn')),
+                        savingLabel: @json(trans('zadarma::app.settings.index.save-mapping-btn')).concat('...'),
+                    };
+                },
+
+                methods: {
+                    save() {
+                        this.isSaving = true;
+
+                        const mappings = this.agents.map((agent) => ({
+                            user_id: agent.id,
+                            extension: agent.extension,
+                        }));
+
+                        this.$axios.put("{{ route('admin.settings.zadarma.extensions.update') }}", { mappings })
+                            .then((response) => {
+                                this.isSaving = false;
+
+                                this.$emitter.emit('add-flash', { type: 'success', message: response.data.message });
+                            })
+                            .catch((error) => {
+                                this.isSaving = false;
+
+                                this.$emitter.emit('add-flash', { type: 'error', message: error.response.data.message });
+                            });
                     },
                 },
             });

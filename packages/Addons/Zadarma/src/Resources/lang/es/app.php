@@ -8,6 +8,16 @@ return [
 
     'acl' => [
         'title' => 'Zadarma VoIP',
+        'phone-title' => 'Softphone Zadarma',
+    ],
+
+    'phone' => [
+        'button-title' => 'Abrir softphone',
+        'page-title' => 'Softphone Zadarma',
+        'loading' => 'Conectando…',
+        'not-configured' => 'Zadarma no está habilitado o configurado todavía. Pide a un admin que lo configure en Settings.',
+        'no-extension' => 'Todavía no tienes una extensión SIP asignada. Pide a un admin que te asigne una en Settings > Zadarma VoIP.',
+        'key-error' => 'No se pudo iniciar el softphone: :error',
     ],
 
     'settings' => [
@@ -31,6 +41,11 @@ return [
             'connection-success' => 'Conexión exitosa.',
             'connection-failed' => 'Conexión fallida: :error',
             'missing-credentials' => 'Ingresa un API Key y API Secret primero.',
+            'extensions-title' => 'Mapeo de extensiones',
+            'extensions-info' => 'Asocia la extensión SIP de Zadarma de cada vendedor con su usuario de Krayin, para que las actividades de llamada se atribuyan al agente correcto.',
+            'save-mapping-btn' => 'Guardar mapeo',
+            'extensions-update-success' => 'Mapeo de extensiones actualizado correctamente.',
+            'duplicate-extension' => 'La extensión ":extension" está asignada a más de un agente.',
         ],
     ],
 ];

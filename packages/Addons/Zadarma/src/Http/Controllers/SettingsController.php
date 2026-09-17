@@ -2,6 +2,7 @@
 
 namespace Addons\Zadarma\Http\Controllers;
 
+use Addons\Zadarma\Repositories\ZadarmaExtensionMappingRepository;
 use Addons\Zadarma\Repositories\ZadarmaSettingRepository;
 use Addons\Zadarma\Services\ZadarmaClient;
 use Illuminate\Http\JsonResponse;
@@ -9,11 +10,14 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Webkul\Admin\Http\Controllers\Controller;
+use Webkul\User\Repositories\UserRepository;
 
 class SettingsController extends Controller
 {
     public function __construct(
         protected ZadarmaSettingRepository $zadarmaSettingRepository,
+        protected ZadarmaExtensionMappingRepository $zadarmaExtensionMappingRepository,
+        protected UserRepository $userRepository,
     ) {}
 
     /**
@@ -23,7 +27,11 @@ class SettingsController extends Controller
     {
         $settings = $this->zadarmaSettingRepository->getSettings();
 
-        return view('zadarma::settings.index', compact('settings'));
+        $users = $this->userRepository->all();
+
+        $extensionMappings = $this->zadarmaExtensionMappingRepository->getAllKeyedByUserId();
+
+        return view('zadarma::settings.index', compact('settings', 'users', 'extensionMappings'));
     }
 
     /**

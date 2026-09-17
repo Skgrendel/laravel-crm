@@ -3,6 +3,7 @@
 namespace Addons\Zadarma\Services;
 
 use Addons\Zadarma\Repositories\ZadarmaCallLogRepository;
+use Addons\Zadarma\Repositories\ZadarmaExtensionMappingRepository;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Webkul\Activity\Repositories\ActivityRepository;
@@ -17,6 +18,7 @@ class CallActivityRecorder
 {
     public function __construct(
         protected ZadarmaCallLogRepository $zadarmaCallLogRepository,
+        protected ZadarmaExtensionMappingRepository $zadarmaExtensionMappingRepository,
         protected ActivityRepository $activityRepository,
         protected PersonRepository $personRepository,
     ) {}
@@ -120,15 +122,17 @@ class CallActivityRecorder
     }
 
     /**
-     * Create the "call" activity and attach it to the lead. Since extension
-     * → agent mapping doesn't exist yet (addon phase 1.4), the activity is
-     * attributed to the lead's own owner, falling back to the first admin.
+     * Create the "call" activity and attach it to the lead. Attributed to
+     * the agent mapped to the call's SIP extension when known, falling back
+     * to the lead's own owner, then the first admin as a last resort.
      */
     protected function createActivity(array $call, $lead)
     {
         $userModelClass = UserProxy::modelClass();
 
-        $userId = $lead->user_id ?: $userModelClass::query()->value('id');
+        $userId = $this->zadarmaExtensionMappingRepository->findUserIdByExtension($call['internal_extension'])
+            ?: $lead->user_id
+            ?: $userModelClass::query()->value('id');
 
         $start = $call['call_start'] ? Carbon::parse($call['call_start']) : now();
         $end = $call['duration'] ? (clone $start)->addSeconds((int) $call['duration']) : $start;
