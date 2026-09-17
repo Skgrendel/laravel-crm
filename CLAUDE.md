@@ -12,6 +12,8 @@ Documentación de detalle por addon:
 - [`docs/whatsapp-addon.md`](docs/whatsapp-addon.md) — Fase 2
 - [`docs/reporting-api.md`](docs/reporting-api.md) — campos custom de ventas
   (migrados de Bitrix24) y la API de reportes que los expone
+- [`docs/deployment.md`](docs/deployment.md) — checklist de puesta en
+  producción (sigue todo en local por ahora)
 
 ## Estructura organizacional (IMPORTANTE)
 

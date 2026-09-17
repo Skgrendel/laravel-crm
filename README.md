@@ -1,152 +1,133 @@
-<p align="center">
-    <a href="https://krayincrm.com">
-        <picture>
-            <source media="(prefers-color-scheme: dark)" height="100" srcset="packages/Webkul/Admin/src/Resources/assets/images/dark-logo.svg">
-            <source media="(prefers-color-scheme: light)" height="100" srcset="packages/Webkul/Admin/src/Resources/assets/images/logo.svg">
-            <img alt="Krayin CRM" height="100" src="packages/Webkul/Admin/src/Resources/assets/images/logo.svg">
-        </picture>
-    </a>
-</p>
+# CRM — PRODERI / ACOFICUM
 
-<p align="center">
-<a href="https://packagist.org/packages/krayin/laravel-crm"><img src="https://poser.pugx.org/krayin/laravel-crm/d/total.svg" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/krayin/laravel-crm"><img src="https://poser.pugx.org/krayin/laravel-crm/v/stable.svg" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/krayin/laravel-crm"><img src="https://poser.pugx.org/krayin/laravel-crm/license.svg" alt="License"></a>
-</p>
+Krayin CRM con dos addons propios, reemplazando Bitrix24.
 
+Este repo **no es Krayin a secas**: trae integraciones de WhatsApp y telefonía
+construidas a medida, campos de ventas migrados de Bitrix24 y una API de
+reportes que Krayin no incluye. Si venís de la documentación oficial de Krayin,
+las diferencias están abajo.
 
-![enter image description here](https://raw.githubusercontent.com/krayin/temp-media/master/dashboard.png)
+---
 
-## Topics
+## Qué hay acá
 
-1. [Introduction](#introduction)
-2. [Documentation](#documentation)
-3. [Requirements](#requirements)
-4. [Installation & Configuration](#installation-and-configuration)
-4. [Docker Installation](https://devdocs.krayincrm.com/2.0/introduction/docker.html)
-5. [Krayin Cloud System](#krayin-cloud-hosting)
-6. [License](#license)
-7. [Security Vulnerabilities](#security-vulnerabilities)
+| | |
+|---|---|
+| **Base** | Krayin CRM (Laravel 12, PHP 8.3) |
+| **Addon Zadarma** | Telefonía VoIP: softphone WebRTC, click-to-call desde el Lead, registro automático de llamadas, desvío de llamadas y DIDs |
+| **Addon WhatsApp** | Captura pasiva de leads, panel de chat multiagente, envío de adjuntos, QR y estado de sesión en vivo |
+| **Microservicio** | [`baileys-whatsapp-service`](../baileys-whatsapp-service) — repo aparte, Node, una sesión por equipo |
+| **Campos de ventas** | 10 campos custom migrados de Bitrix24, creados por comando |
+| **API de reportes** | Endpoints con Sanctum que exponen los leads **con** sus campos custom |
 
-### Introduction
+### Arquitectura
 
-[Krayin CRM](https://krayincrm.com) is a hand tailored CRM framework built on some of the hottest opensource technologies
-such as [Laravel](https://laravel.com) (a [PHP](https://secure.php.net/) framework) and [Vue.js](https://vuejs.org)
-a progressive Javascript framework.
-
-**Free & Opensource Laravel CRM solution for SMEs and Enterprises for complete customer lifecycle management.**
-
-**Read our documentation: [Krayin CRM Docs](https://devdocs.krayincrm.com/)**
-
-**We also have a forum for any type of concerns, feature requests, or discussions. Please visit: [Krayin CRM Forums](https://forums.krayincrm.com/)**
-
-# Visit our live [Demo](https://demo.krayincrm.com)
-
-<a href="javascript:void();">
-    <img class="flag-img" src="https://raw.githubusercontent.com/krayin/temp-media/master/visit-our-live-demo.png" alt="Chinese" width="100%">
-</a>
-
-It packs in lots of features that will allow your E-Commerce business to scale in no time:
-
--   Descriptive and Simple Admin Panel.
--   Admin Dashboard.
--   Custom Attributes.
--   Built on Modular Approach.
--   Email parsing via Sendgrid.
--   Check out [these features and more](https://krayincrm.com/features/).
-
-**For Developers**:
-Take advantage of two of the hottest frameworks used in this project -- Laravel and Vue.js -- both of which have been used in Krayin CRM.
-
-### Documentation
-
-#### Krayin Documentation [https://devdocs.krayincrm.com](https://devdocs.krayincrm.com)
-
-### Requirements
-
--   **SERVER**: Apache 2 or NGINX.
--   **RAM**: 3 GB or higher.
--   **PHP**: 8.3 or higher
--   **Composer**: 2.5 or higher
--   **For MySQL users**: 8.0.32 or higher.
--   **For MariaDB users**: 11.4 LTS or higher (11.8 LTS recommended).
-
-### Installation and Configuration
-
-##### Execute these commands below, in order
+Son **dos equipos comerciales separados**, y por eso **dos instalaciones**
+independientes de Krayin (bases distintas). No es una instancia con permisos
+compartidos: el aislamiento entre los dos negocios es real, no una capa de
+permisos que puede fallar.
 
 ```
-composer create-project
+PRODERI   → Krayin #1 ─┐
+                       ├── microservicio Baileys (1 sesión por equipo)
+ACOFICUM  → Krayin #2 ─┘        └── Zadarma (solo ACOFICUM)
 ```
 
--   Find **.env** file in root directory and change the **APP_URL** param to your **domain**.
+El microservicio es **uno solo compartido**: cada sesión apunta al webhook de
+su propia instalación, con su propio `apiKey` y `webhookSecret`.
 
--   Also, Configure the **Mail** and **Database** parameters inside **.env** file.
+---
 
-```
+## Requisitos
+
+- PHP 8.3+, Composer
+- MySQL 8+
+- Node 20+ (para el microservicio de WhatsApp)
+
+---
+
+## Instalación local
+
+```bash
+composer install
+cp .env.example .env     # ya trae timezone/locale correctos, revisar base de datos
 php artisan krayin-crm:install
+php artisan crm:install-sales-attributes
 ```
 
-**To execute Krayin**:
+`krayin-crm:install` corre `migrate:fresh`, que **borra todas las tablas**. En
+una base nueva está bien; sobre una con datos usar `php artisan migrate`.
 
-##### On server:
+Los addons no requieren pasos aparte: sus migraciones se cargan solas porque
+los ServiceProviders están registrados en `bootstrap/providers.php`.
 
-Warning: Before going into production mode we recommend you uninstall developer dependencies.
-In order to do that, run the command below:
+**Después de instalar**, configurar desde el panel:
 
-> composer install --no-dev
+- **Settings > Zadarma** — `api_key` / `api_secret` y el mapeo de extensiones
+  por agente (solo ACOFICUM).
+- **Settings > WhatsApp** — activar, `session_id` y `service_url`. El `api_key`
+  y el `webhook_secret` se **autogeneran**: copiarlos al `config/sessions.json`
+  del microservicio.
+- **Settings > Attributes** — cargar las opciones de `Tipo de Afiliado` y
+  `Pagado Por`. Se crean vacíos a propósito: son taxonomías del negocio y una
+  lista inventada terminaría siendo la que la gente elige.
 
-```
-Open the specified entry point in your hosts file in your browser or make an entry in hosts file if not done.
-```
+### Microservicio de WhatsApp
 
-##### On local:
+Vive en un repo separado. Ver su README para el detalle; en corto:
 
-```
-php artisan route:clear
-php artisan serve
-```
-
-
-**How to log in as admin:**
-
-> _http(s)://example.com/admin/login_
-
-```
-email:admin@example.com
-password:admin123
+```bash
+cd ../baileys-whatsapp-service
+npm install --allow-git=all
+cp config/sessions.example.json config/sessions.json   # completar con lo de Krayin
+npm start
 ```
 
-### Krayin Cloud Hosting
+Para vincular un número: Settings > WhatsApp muestra el QR cuando la sesión está
+esperando, y se escanea desde WhatsApp Business del celular del equipo.
 
-[Krayin CRM Cloud Hosting](https://krayincrm.com/crm-cloud-hosting) is a fully managed hosting solution where our team sets up, secures, and configures your Krayin CRM on reliable infrastructure.
+---
 
-Get a ready-to-use CRM on your own domain, without manual installation or infrastructure complexity, and focus on growing your business while we handle the technology.
+## Comandos propios
 
-![Krayin CRM Cloud Hosting](https://raw.githubusercontent.com/krayin/temp-media/master/cloud_hosting.png)
+| Comando | Para qué |
+|---|---|
+| `php artisan crm:install-sales-attributes` | Crea los 10 campos de ventas migrados de Bitrix24. Idempotente, hay que correrlo en **ambas** instalaciones. |
+| `php artisan crm:api-token {email}` | Emite un token de Sanctum para la API de reportes. Se muestra una sola vez. |
 
-### Krayin CRM Multi Tenant SaaS
+> Los campos se crean por comando y no a mano porque el `code` de cada atributo
+> es lo que identifica el campo en la API. Si diverge entre las dos
+> instalaciones, cualquier reporte que cruce ambas se rompe en silencio.
 
-[Krayin CRM Multi Tenant SaaS](https://krayincrm.com/extensions/krayin-crm-multi-tenant-saas-extension/) Krayin Multitenant SaaS is a Laravel-based CRM solution that allows multiple businesses (tenants) to use a single application instance while keeping their data isolated and secure.
+---
 
-![enter image description here](https://raw.githubusercontent.com/krayin/temp-media/master/krayin-saas.png)
+## Documentación
 
-### WhatsApp CRM Integration
+| Doc | Contenido |
+|---|---|
+| [`CLAUDE.md`](CLAUDE.md) | Contexto del proyecto, decisiones de arquitectura y fases |
+| [`docs/zadarma-addon.md`](docs/zadarma-addon.md) | Addon de telefonía: alcance, decisiones y limitaciones reales de la API de Zadarma |
+| [`docs/whatsapp-addon.md`](docs/whatsapp-addon.md) | Addon de WhatsApp, incluido el registro de bugs encontrados en pruebas reales y la auditoría de seguridad |
+| [`docs/reporting-api.md`](docs/reporting-api.md) | Campos custom y API de reportes |
+| [`docs/deployment.md`](docs/deployment.md) | Checklist de puesta en producción |
 
-[Krayin CRM WhatsApp](https://krayincrm.com/extensions/krayin-crm-whatsapp-extension/) Extension enables the store administrator to generate leads via their WhatsApp number.
+---
 
-![enter image description here](https://raw.githubusercontent.com/krayin/temp-media/master/krayin-crm-whatsapp-integration.png)
+## Tests
 
-### VoIP CRM Integration
+```bash
+php artisan test
+```
 
-[Krayin CRM VoIP](https://krayincrm.com/extensions/krayin-crm-voip/) extension allows the user to make Trunk calls over a broadband Internet connection and the user can also perform Inbound routes.
+**Corren contra la base de desarrollo real** — este repo no usa
+`RefreshDatabase`. Cualquier test que toque filas compartidas (settings,
+usuarios, leads) tiene que capturar el valor original y restaurarlo en un
+`finally`, o corrompe datos de verdad. Ya pasó tres veces; está documentado en
+los docs de cada addon.
 
-![enter image description here](https://raw.githubusercontent.com/krayin/temp-media/master/krayin-voip.png)
+---
 
-### License
+## Sobre Krayin
 
-Krayin CRM is a fully open-source CRM framework which will always be free under the [MIT License](https://github.com/krayin/laravel-crm/blob/2.1/LICENSE).
-
-### Security Vulnerabilities
-
-Please don't disclose security vulnerabilities publicly. If you find any security vulnerability in Krayin CRM then please email us: sales@krayincrm.com.
+Basado en [Krayin CRM](https://krayincrm.com) (MIT). La documentación oficial
+sirve para todo lo que es core; los addons de este repo no están ahí.
