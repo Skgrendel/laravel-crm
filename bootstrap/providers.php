@@ -1,5 +1,6 @@
 <?php
 
+use Addons\Zadarma\Providers\ZadarmaServiceProvider;
 use App\Providers\AppServiceProvider;
 use Barryvdh\DomPDF\ServiceProvider;
 use Konekt\Concord\ConcordServiceProvider;
@@ -37,6 +38,11 @@ return [
      * Application Service Providers...
      */
     AppServiceProvider::class,
+
+    /*
+     * Addon Service Providers...
+     */
+    ZadarmaServiceProvider::class,
 
     /*
      * Webkul Service Providers...

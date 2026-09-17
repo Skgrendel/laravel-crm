@@ -1,5 +1,6 @@
 <?php
 
+use Addons\Zadarma\Providers\ModuleServiceProvider as ZadarmaModuleServiceProvider;
 use Webkul\Admin\Providers\ModuleServiceProvider as AdminModuleServiceProvider;
 use Webkul\Attribute\Providers\ModuleServiceProvider as AttributeModuleServiceProvider;
 use Webkul\Automation\Providers\ModuleServiceProvider as AutomationModuleServiceProvider;
@@ -19,6 +20,7 @@ use Webkul\WebForm\Providers\ModuleServiceProvider as WebFormModuleServiceProvid
 
 return [
     'modules' => [
+        ZadarmaModuleServiceProvider::class,
         DataTransferModuleServiceProvider::class,
         AdminModuleServiceProvider::class,
         AttributeModuleServiceProvider::class,
