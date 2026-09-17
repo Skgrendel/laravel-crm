@@ -18,6 +18,11 @@ return [
         'not-configured' => 'Zadarma no está habilitado o configurado todavía. Pide a un admin que lo configure en Settings.',
         'no-extension' => 'Todavía no tienes una extensión SIP asignada. Pide a un admin que te asigne una en Settings > Zadarma VoIP.',
         'key-error' => 'No se pudo iniciar el softphone: :error',
+        'recent-calls-title' => 'Llamadas recientes',
+        'no-recent-calls' => 'Todavía no hay llamadas registradas.',
+        'no-lead-match' => 'Sin Lead asociado',
+        'incoming' => 'Entrante',
+        'outgoing' => 'Saliente',
     ],
 
     'settings' => [

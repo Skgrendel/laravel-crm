@@ -2,6 +2,7 @@
 
 namespace Addons\Zadarma\Http\Controllers;
 
+use Addons\Zadarma\Repositories\ZadarmaCallLogRepository;
 use Addons\Zadarma\Repositories\ZadarmaExtensionMappingRepository;
 use Addons\Zadarma\Repositories\ZadarmaSettingRepository;
 use Addons\Zadarma\Services\ZadarmaClient;
@@ -14,6 +15,7 @@ class PhoneController extends Controller
     public function __construct(
         protected ZadarmaSettingRepository $zadarmaSettingRepository,
         protected ZadarmaExtensionMappingRepository $zadarmaExtensionMappingRepository,
+        protected ZadarmaCallLogRepository $zadarmaCallLogRepository,
     ) {}
 
     /**
@@ -28,8 +30,13 @@ class PhoneController extends Controller
             auth()->guard('user')->id()
         );
 
+        $recentCalls = $extension
+            ? $this->zadarmaCallLogRepository->recentForExtension($extension)
+            : collect();
+
         return view('zadarma::phone.show', [
-            'extension' => $extension,
+            'extension'   => $extension,
+            'recentCalls' => $recentCalls,
         ]);
     }
 

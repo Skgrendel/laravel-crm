@@ -62,7 +62,7 @@
             popup = window.open(
                 @json(route('admin.zadarma.phone.show')),
                 'zadarma_softphone',
-                'width=380,height=640,resizable=yes,scrollbars=yes'
+                'width=400,height=600,resizable=yes,scrollbars=yes'
             );
         });
 

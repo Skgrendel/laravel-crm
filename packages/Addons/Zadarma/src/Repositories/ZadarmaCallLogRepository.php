@@ -25,4 +25,18 @@ class ZadarmaCallLogRepository extends Repository
     {
         return $this->model->newQuery()->where('pbx_call_id', $pbxCallId)->exists();
     }
+
+    /**
+     * The most recent finished calls handled by a given SIP extension, for
+     * the "recent calls" panel next to the softphone dial pad.
+     */
+    public function recentForExtension(string $extension, int $limit = 15)
+    {
+        return $this->model->newQuery()
+            ->with('lead')
+            ->where('internal_extension', $extension)
+            ->orderByDesc('created_at')
+            ->limit($limit)
+            ->get();
+    }
 }

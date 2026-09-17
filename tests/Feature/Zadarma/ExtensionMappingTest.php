@@ -41,6 +41,8 @@ it('clears a mapping when the extension is left blank', function () {
 
     $repository = app(ZadarmaExtensionMappingRepository::class);
 
+    $original = $repository->findExtensionByUserId($admin->id);
+
     $repository->saveMappings([$admin->id => 'temp-202']);
     expect($repository->findUserIdByExtension('temp-202'))->toBe($admin->id);
 
@@ -53,4 +55,7 @@ it('clears a mapping when the extension is left blank', function () {
         ->assertOK();
 
     expect($repository->findUserIdByExtension('temp-202'))->toBeNull();
+
+    // Restore prior state.
+    $repository->saveMappings([$admin->id => $original]);
 });
