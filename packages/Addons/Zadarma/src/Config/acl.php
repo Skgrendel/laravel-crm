@@ -7,6 +7,7 @@ return [
         'route' => [
             'admin.settings.zadarma.index',
             'admin.settings.zadarma.update',
+            'admin.settings.zadarma.webhook_secret.regenerate',
             'admin.settings.zadarma.test_connection',
         ],
         'sort' => 3,

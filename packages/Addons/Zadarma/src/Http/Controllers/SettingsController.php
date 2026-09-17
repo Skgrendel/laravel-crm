@@ -32,10 +32,9 @@ class SettingsController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'enabled'        => 'sometimes|boolean',
-            'api_key'        => 'nullable|string',
-            'api_secret'     => 'nullable|string',
-            'webhook_secret' => 'nullable|string',
+            'enabled'    => 'sometimes|boolean',
+            'api_key'    => 'nullable|string',
+            'api_secret' => 'nullable|string',
         ]);
 
         $data['enabled'] = $request->boolean('enabled');
@@ -47,7 +46,7 @@ class SettingsController extends Controller
          * admin doesn't have to re-paste secrets every time they touch this
          * form (e.g. just to flip the toggle).
          */
-        foreach (['api_key', 'api_secret', 'webhook_secret'] as $secretField) {
+        foreach (['api_key', 'api_secret'] as $secretField) {
             if (empty($data[$secretField])) {
                 unset($data[$secretField]);
             }
@@ -56,6 +55,19 @@ class SettingsController extends Controller
         $this->zadarmaSettingRepository->update($data, $settings->id);
 
         session()->flash('success', trans('zadarma::app.settings.index.update-success'));
+
+        return redirect()->route('admin.settings.zadarma.index');
+    }
+
+    /**
+     * Rotate the webhook URL secret. The admin must then update the
+     * webhook URL configured on Zadarma's side with the new one shown.
+     */
+    public function regenerateWebhookSecret(): RedirectResponse
+    {
+        $this->zadarmaSettingRepository->regenerateWebhookSecret();
+
+        session()->flash('success', trans('zadarma::app.settings.index.webhook-url-regenerated'));
 
         return redirect()->route('admin.settings.zadarma.index');
     }

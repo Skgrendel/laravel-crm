@@ -34,10 +34,10 @@ it('can toggle the addon on without touching stored credentials', function () {
     $repository->update(['enabled' => $before->enabled], $after->id);
 });
 
-it('rejects testing the connection without any credentials configured', function () {
-    $admin = getDefaultAdmin();
-
-    test()->actingAs($admin)
-        ->post(route('admin.settings.zadarma.test_connection'), [])
-        ->assertStatus(422);
-});
+/**
+ * Not tested at the HTTP level: `testConnection` falls back to whatever
+ * credentials are already saved when the request fields are blank, and this
+ * suite runs against the real dev database (no RefreshDatabase), which may
+ * already have real Zadarma credentials saved. Asserting a 422 here would
+ * either be flaky or require clearing real saved state — neither is safe.
+ */

@@ -56,6 +56,21 @@
 
             <!-- Credentials card -->
             <v-zadarma-credentials></v-zadarma-credentials>
+
+            <!-- Webhook URL card -->
+            <div class="rounded-lg border border-gray-300 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                <p class="mb-1 text-base font-semibold text-gray-800 dark:text-white">
+                    @lang('zadarma::app.settings.index.webhook-url-title')
+                </p>
+
+                <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">
+                    @lang('zadarma::app.settings.index.webhook-url-info')
+                </p>
+
+                <v-zadarma-webhook-url
+                    url="{{ route('admin.zadarma.webhook', $settings->webhook_secret) }}"
+                ></v-zadarma-webhook-url>
+            </div>
         </div>
     </x-admin::form>
 
@@ -111,24 +126,6 @@
                         />
                     </x-admin::form.control-group>
                 </div>
-
-                <x-admin::form.control-group>
-                    <x-admin::form.control-group.label>
-                        @lang('zadarma::app.settings.index.webhook-secret')
-                    </x-admin::form.control-group.label>
-
-                    <x-admin::form.control-group.control
-                        type="password"
-                        id="webhook_secret"
-                        name="webhook_secret"
-                        :label="trans('zadarma::app.settings.index.webhook-secret')"
-                        placeholder="{{ $settings->webhook_secret ? '••••••••' : '' }}"
-                    />
-
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        @lang('zadarma::app.settings.index.webhook-secret-info')
-                    </p>
-                </x-admin::form.control-group>
 
                 <div class="mt-2 flex items-center gap-2.5">
                     <!--
@@ -186,6 +183,82 @@
 
                                 this.$emitter.emit('add-flash', { type: 'error', message: error.response.data.message });
                             });
+                    },
+                },
+            });
+        </script>
+
+        <script
+            type="text/x-template"
+            id="v-zadarma-webhook-url-template"
+        >
+            <div class="flex items-center gap-2.5 max-sm:flex-col max-sm:items-stretch">
+                <input
+                    type="text"
+                    class="control h-11 flex-1 rounded-md border px-3 py-2.5 text-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
+                    :value="url"
+                    readonly
+                    @click="$event.target.select()"
+                />
+
+                <button
+                    type="button"
+                    class="secondary-button"
+                    @click="copyUrl"
+                >
+                    @{{ copyLabel }}
+                </button>
+
+                <button
+                    type="button"
+                    class="secondary-button"
+                    :disabled="isRegenerating"
+                    @click="regenerate"
+                >
+                    @{{ regenerateLabel }}
+                </button>
+            </div>
+        </script>
+
+        <script type="module">
+            app.component('v-zadarma-webhook-url', {
+                template: '#v-zadarma-webhook-url-template',
+
+                props: {
+                    url: String,
+                },
+
+                data() {
+                    return {
+                        isRegenerating: false,
+                        copyLabel: @json(trans('zadarma::app.settings.index.copy-btn')),
+                        regenerateLabel: @json(trans('zadarma::app.settings.index.regenerate-btn')),
+                    };
+                },
+
+                methods: {
+                    copyUrl() {
+                        navigator.clipboard.writeText(this.url);
+
+                        this.$emitter.emit('add-flash', { type: 'success', message: @json(trans('zadarma::app.settings.index.copy-success')) });
+                    },
+
+                    regenerate() {
+                        this.$emitter.emit('open-confirm-modal', {
+                            agree: () => {
+                                this.isRegenerating = true;
+
+                                this.$axios.post("{{ route('admin.settings.zadarma.webhook_secret.regenerate') }}")
+                                    .then(() => {
+                                        window.location.reload();
+                                    })
+                                    .catch((error) => {
+                                        this.isRegenerating = false;
+
+                                        this.$emitter.emit('add-flash', { type: 'error', message: error.response.data.message });
+                                    });
+                            },
+                        });
                     },
                 },
             });
