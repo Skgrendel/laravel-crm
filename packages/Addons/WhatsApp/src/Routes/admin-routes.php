@@ -1,6 +1,7 @@
 <?php
 
 use Addons\WhatsApp\Http\Controllers\ChatController;
+use Addons\WhatsApp\Http\Controllers\SessionController;
 use Addons\WhatsApp\Http\Controllers\SettingsController;
 use Addons\WhatsApp\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
@@ -10,6 +11,18 @@ Route::prefix('settings/whatsapp')->group(function () {
         Route::get('', 'index')->name('admin.settings.whatsapp.index');
 
         Route::put('', 'update')->name('admin.settings.whatsapp.update');
+
+        Route::post('api-key/regenerate', 'regenerateApiKey')->name('admin.settings.whatsapp.api_key.regenerate');
+
+        Route::post('webhook-secret/regenerate', 'regenerateWebhookSecret')->name('admin.settings.whatsapp.webhook_secret.regenerate');
+    });
+
+    Route::controller(SessionController::class)->prefix('session')->group(function () {
+        Route::get('status', 'status')->name('admin.settings.whatsapp.session.status');
+
+        Route::get('qr', 'qr')->name('admin.settings.whatsapp.session.qr');
+
+        Route::post('reconnect', 'reconnect')->name('admin.settings.whatsapp.session.reconnect');
     });
 });
 

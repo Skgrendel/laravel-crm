@@ -5,7 +5,6 @@ namespace Addons\WhatsApp\Http\Controllers;
 use Addons\WhatsApp\Repositories\WhatsAppSettingRepository;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\User\Repositories\UserRepository;
@@ -36,10 +35,9 @@ class SettingsController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'enabled' => 'sometimes|boolean',
-            'session_id' => 'nullable|string',
-            'service_url' => 'nullable|url',
-            'api_key' => 'nullable|string',
+            'enabled'          => 'sometimes|boolean',
+            'session_id'       => 'nullable|string',
+            'service_url'      => 'nullable|url',
             'default_owner_id' => 'nullable|exists:users,id',
         ]);
 
@@ -47,26 +45,37 @@ class SettingsController extends Controller
 
         $settings = $this->whatsAppSettingRepository->getSettings();
 
-        /**
-         * Keep the existing api_key when the field is left blank, so the
-         * admin doesn't have to re-paste it every time they touch this form.
-         */
-        if (empty($data['api_key'])) {
-            unset($data['api_key']);
-        }
-
-        /**
-         * Generated once, not typed by the admin — it must match the
-         * `webhookSecret` configured for this session in the microservice's
-         * `config/sessions.json` on the other end.
-         */
-        if (empty($settings->webhook_secret)) {
-            $data['webhook_secret'] = Str::random(40);
-        }
-
         $this->whatsAppSettingRepository->update($data, $settings->id);
 
         session()->flash('success', trans('whatsapp::app.settings.index.update-success'));
+
+        return redirect()->route('admin.settings.whatsapp.index');
+    }
+
+    /**
+     * Rotate the API key Krayin sends to the microservice. The admin must
+     * then update `apiKey` for this session in the microservice's
+     * `config/sessions.json` with the new one shown.
+     */
+    public function regenerateApiKey(): RedirectResponse
+    {
+        $this->whatsAppSettingRepository->regenerateApiKey();
+
+        session()->flash('success', trans('whatsapp::app.settings.index.api-key-regenerated'));
+
+        return redirect()->route('admin.settings.whatsapp.index');
+    }
+
+    /**
+     * Rotate the webhook secret the microservice signs events with. The
+     * admin must then update `webhookSecret` for this session in the
+     * microservice's `config/sessions.json` with the new one shown.
+     */
+    public function regenerateWebhookSecret(): RedirectResponse
+    {
+        $this->whatsAppSettingRepository->regenerateWebhookSecret();
+
+        session()->flash('success', trans('whatsapp::app.settings.index.webhook-secret-regenerated'));
 
         return redirect()->route('admin.settings.whatsapp.index');
     }

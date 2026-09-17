@@ -4,7 +4,6 @@ use Addons\WhatsApp\Models\WhatsAppConversation;
 use Addons\WhatsApp\Models\WhatsAppMessage;
 use Addons\WhatsApp\Repositories\WhatsAppSettingRepository;
 use Addons\WhatsApp\Services\WhatsAppWebhookSignature;
-use Illuminate\Support\Arr;
 use Webkul\Lead\Models\Lead;
 
 /**
@@ -19,8 +18,35 @@ function whatsAppSettingsRepository()
     return app(WhatsAppSettingRepository::class);
 }
 
+/**
+ * `WhatsAppSetting::$hidden` includes `api_key` and `webhook_secret` (so
+ * they never leak into API responses) — which means `->toArray()` silently
+ * *drops* those two fields entirely, regardless of any `Arr::only()` list
+ * applied afterwards. A test that captured "the original settings" via
+ * `->toArray()` could never actually restore them: the key just isn't
+ * there to restore. Direct property access goes through the model's normal
+ * accessors (correctly decrypting `encrypted`-cast fields) and bypasses
+ * `$hidden` entirely, so this is the safe way to snapshot this row for a
+ * test's later restore.
+ */
+function captureWhatsAppSettings(): array
+{
+    $settings = whatsAppSettingsRepository()->getSettings();
+
+    return [
+        'enabled' => $settings->enabled,
+        'webhook_secret' => $settings->webhook_secret,
+        'default_owner_id' => $settings->default_owner_id,
+        'session_id' => $settings->session_id,
+        'service_url' => $settings->service_url,
+        'api_key' => $settings->api_key,
+        'last_status' => $settings->last_status,
+        'connected_number' => $settings->connected_number,
+    ];
+}
+
 beforeEach(function () {
-    $this->originalSettings = whatsAppSettingsRepository()->getSettings()->toArray();
+    $this->originalSettings = captureWhatsAppSettings();
 
     whatsAppSettingsRepository()->getSettings()->update([
         'enabled' => true,
@@ -30,9 +56,7 @@ beforeEach(function () {
 });
 
 afterEach(function () {
-    whatsAppSettingsRepository()->getSettings()->update(Arr::only($this->originalSettings, [
-        'enabled', 'webhook_secret', 'default_owner_id', 'session_id', 'service_url', 'last_status', 'connected_number',
-    ]));
+    whatsAppSettingsRepository()->getSettings()->update($this->originalSettings);
 });
 
 function signedWhatsAppWebhookPost(array $payload)
@@ -118,6 +142,78 @@ it('creates a conversation, message and Lead from a first received message', fun
     expect(WhatsAppMessage::where('wa_message_id', $waMessageId)->count())->toBe(1);
 
     $lead->delete();
+    $conversation->delete();
+    $message->delete();
+});
+
+/**
+ * The column carries no timezone, so the instant has to survive the
+ * write/read round-trip. Inbound messages used to be stored as UTC wall
+ * clock and read back as app-timezone, landing every received message the
+ * app's UTC offset early (5h30m under Krayin's default Asia/Kolkata) while
+ * CRM-sent ones were right — the two drifted apart inside one thread.
+ */
+it('stores an inbound message at the instant WhatsApp reported', function () {
+    $waMessageId = 'test-tz-'.uniqid();
+    $phone = '549555'.rand(1000, 9999);
+    $timestamp = now()->subMinutes(3);
+
+    signedWhatsAppWebhookPost([
+        'type' => 'message',
+        'session' => 'test',
+        'messageType' => 'received',
+        'waMessageId' => $waMessageId,
+        'remoteJid' => $phone.'@s.whatsapp.net',
+        'number' => $phone,
+        'text' => 'Qué hora es',
+        'timestamp' => $timestamp->timestamp,
+    ])->assertNoContent();
+
+    $message = WhatsAppMessage::where('wa_message_id', $waMessageId)->first();
+
+    expect($message->sent_at->timestamp)->toBe($timestamp->timestamp);
+
+    $conversation = WhatsAppConversation::find($message->conversation_id);
+
+    Lead::find($conversation->lead_id)?->delete();
+    $conversation->delete();
+    $message->delete();
+});
+
+/**
+ * A photo with no caption used to produce no text at all, and the
+ * microservice dropped the whole message: no row, no Lead, no trace. A
+ * customer could open a conversation with a single photo and the CRM would
+ * never know. The file still isn't downloaded, but the message and the Lead
+ * must exist.
+ */
+it('captures a media-only message and still creates its Lead', function () {
+    $waMessageId = 'test-media-'.uniqid();
+    $phone = '549666'.rand(1000, 9999);
+
+    signedWhatsAppWebhookPost([
+        'type' => 'message',
+        'session' => 'test',
+        'messageType' => 'received',
+        'waMessageId' => $waMessageId,
+        'remoteJid' => $phone.'@s.whatsapp.net',
+        'number' => $phone,
+        'text' => null,
+        'mediaType' => 'image',
+        'timestamp' => now()->timestamp,
+    ])->assertNoContent();
+
+    $message = WhatsAppMessage::where('wa_message_id', $waMessageId)->first();
+
+    expect($message)->not->toBeNull();
+    expect($message->body)->toBeNull();
+    expect($message->media_type)->toBe('image');
+
+    $conversation = WhatsAppConversation::find($message->conversation_id);
+
+    expect($conversation->lead_id)->not->toBeNull();
+
+    Lead::find($conversation->lead_id)?->delete();
     $conversation->delete();
     $message->delete();
 });

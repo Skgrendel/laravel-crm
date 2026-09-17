@@ -62,6 +62,6 @@ class WhatsAppConversation extends Model implements WhatsAppConversationContract
      */
     public function messages()
     {
-        return $this->hasMany(WhatsAppMessageProxy::modelClass())->orderBy('sent_at');
+        return $this->hasMany(WhatsAppMessageProxy::modelClass(), 'conversation_id')->orderBy('sent_at');
     }
 }

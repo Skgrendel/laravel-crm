@@ -9,6 +9,7 @@ use Addons\WhatsApp\Repositories\WhatsAppSettingRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Webkul\Admin\Http\Controllers\Controller;
 
 /**
@@ -35,7 +36,7 @@ class ChatController extends Controller
         $conversation = $this->conversationForLead($leadId);
 
         return response()->json([
-            'messages' => $conversation ? $conversation->messages()->get(['id', 'type', 'body', 'sent_at']) : [],
+            'messages' => $conversation ? $conversation->messages()->get(['id', 'type', 'body', 'media_type', 'sent_at']) : [],
         ]);
     }
 
@@ -69,7 +70,15 @@ class ChatController extends Controller
             $response = Http::withHeaders(['X-Api-Key' => $settings->api_key])
                 ->timeout(15)
                 ->post(rtrim($settings->service_url, '/')."/sessions/{$settings->session_id}/send", [
-                    'to' => $conversation->phone_number,
+                    /**
+                     * The stored JID, not `phone_number`: WhatsApp addresses
+                     * plenty of contacts by `@lid` (hidden identity), where
+                     * the digits are an internal id, not a reachable number.
+                     * Rebuilding `<digits>@s.whatsapp.net` from those sends
+                     * to nobody — Baileys still returns a message id, so it
+                     * looks like it worked while nothing is delivered.
+                     */
+                    'to' => $conversation->remote_jid ?: $conversation->phone_number,
                     'message' => $request->input('message'),
                 ]);
         } catch (\Throwable $exception) {
@@ -103,11 +112,30 @@ class ChatController extends Controller
 
         $this->whatsAppConversationRepository->touchLastMessageAt($conversation->id, $sentAt);
 
-        broadcast(new WhatsAppMessageReceived($message, $leadId));
+        $this->broadcastSafely($message, $leadId);
 
         return response()->json([
             'message' => $message,
         ]);
+    }
+
+    /**
+     * Live-updating the chat panel is a nice-to-have — a broadcasting
+     * failure (e.g. Reverb unreachable) must never turn into a failed send:
+     * the message is already stored and delivered via the microservice by
+     * the time this runs.
+     */
+    protected function broadcastSafely($message, int $leadId): void
+    {
+        try {
+            broadcast(new WhatsAppMessageReceived($message, $leadId));
+        } catch (\Throwable $exception) {
+            Log::warning('WhatsApp message broadcast failed; message was still sent.', [
+                'message_id' => $message->id,
+                'lead_id'    => $leadId,
+                'error'      => $exception->getMessage(),
+            ]);
+        }
     }
 
     protected function conversationForLead(int $leadId)

@@ -7,6 +7,11 @@ return [
         'route' => [
             'admin.settings.whatsapp.index',
             'admin.settings.whatsapp.update',
+            'admin.settings.whatsapp.api_key.regenerate',
+            'admin.settings.whatsapp.webhook_secret.regenerate',
+            'admin.settings.whatsapp.session.status',
+            'admin.settings.whatsapp.session.qr',
+            'admin.settings.whatsapp.session.reconnect',
         ],
         'sort' => 4,
     ],

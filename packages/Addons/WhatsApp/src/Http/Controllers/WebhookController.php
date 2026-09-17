@@ -82,8 +82,17 @@ class WebhookController extends Controller
 
         $conversation = $this->whatsAppLeadCreator->resolveConversation($remoteJid, $number);
 
+        /**
+         * The app timezone has to be explicit: `createFromTimestamp()` alone
+         * returns a UTC instance, and since the column carries no timezone,
+         * Eloquent later reads that wall clock back *as* app-timezone time —
+         * shifting every received message by the app's UTC offset (5h30m
+         * here, Krayin defaults `app.timezone` to Asia/Kolkata). Messages
+         * sent from the CRM used `now()` and were correct, so inbound and
+         * outbound drifted apart in the same thread.
+         */
         $sentAt = isset($payload['timestamp'])
-            ? Carbon::createFromTimestamp($payload['timestamp'])
+            ? Carbon::createFromTimestamp($payload['timestamp'], config('app.timezone'))
             : now();
 
         $message = $this->whatsAppMessageRepository->create([
@@ -91,13 +100,32 @@ class WebhookController extends Controller
             'wa_message_id' => $waMessageId,
             'type' => $payload['messageType'] ?? 'received',
             'body' => $payload['text'] ?? null,
+            'media_type' => $payload['mediaType'] ?? null,
             'sent_at' => $sentAt,
         ]);
 
         $this->whatsAppConversationRepository->touchLastMessageAt($conversation->id, $sentAt);
 
         if ($conversation->lead_id) {
-            broadcast(new WhatsAppMessageReceived($message, $conversation->lead_id));
+            $this->broadcastSafely($message, $conversation->lead_id);
+        }
+    }
+
+    /**
+     * Live-updating the chat panel is a nice-to-have — a broadcasting
+     * failure (e.g. Reverb unreachable) must never turn into a 500 on this
+     * webhook, which would otherwise take down lead capture along with it.
+     */
+    protected function broadcastSafely($message, int $leadId): void
+    {
+        try {
+            broadcast(new WhatsAppMessageReceived($message, $leadId));
+        } catch (\Throwable $exception) {
+            Log::warning('WhatsApp message broadcast failed; message was still stored.', [
+                'message_id' => $message->id,
+                'lead_id'    => $leadId,
+                'error'      => $exception->getMessage(),
+            ]);
         }
     }
 }

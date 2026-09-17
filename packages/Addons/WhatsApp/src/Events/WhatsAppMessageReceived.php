@@ -6,18 +6,23 @@ use Addons\WhatsApp\Models\WhatsAppMessage;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 
 /**
  * Broadcast the instant a WhatsApp message (any of the 3 types) is stored,
  * so the chat panel on an open Lead updates without a page refresh.
- * `ShouldBroadcastNow` (not the queued `ShouldBroadcast`) so this doesn't
- * silently do nothing on an install with no queue worker running — this
- * addon has no other queue dependency, and message volume per lead is low
- * enough that broadcasting synchronously from the webhook request is fine.
+ *
+ * `ShouldBroadcast` (queued), not `ShouldBroadcastNow` — the live-update is
+ * a nice-to-have, not the addon's core function (storing the message /
+ * capturing the lead). With the default `QUEUE_CONNECTION=sync` this still
+ * runs inline for now, so the call sites (WebhookController, ChatController)
+ * additionally wrap `broadcast()` in a try/catch: a Reverb outage should
+ * never turn into a 500 on the webhook or a failed message send. If this
+ * installation ever moves to a real queue connection + worker, broadcasting
+ * failures then just retry via the queue instead of being swallowed.
  */
-class WhatsAppMessageReceived implements ShouldBroadcastNow
+class WhatsAppMessageReceived implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets;
 
@@ -47,6 +52,7 @@ class WhatsAppMessageReceived implements ShouldBroadcastNow
             'id' => $this->message->id,
             'type' => $this->message->type,
             'body' => $this->message->body,
+            'media_type' => $this->message->media_type,
             'sent_at' => $this->message->sent_at->toIso8601String(),
         ];
     }

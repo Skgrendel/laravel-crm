@@ -37,15 +37,20 @@ class WhatsAppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Inject the chat panel (Fase 2.3) into every Lead's view via Krayin's
+     * Inject the chat (Fase 2.3) into every Lead's view via Krayin's
      * `view_render_event` extension point, without touching core's
      * `leads/view.blade.php`. Shown for any Lead the user can already see —
-     * an empty conversation just renders an empty panel; there's no
+     * an empty conversation just renders an empty thread; there's no
      * separate "this Lead uses WhatsApp" flag to gate on.
+     *
+     * Rendered as a WhatsApp tile in the Lead's action row (next to core's
+     * Correo/Archivo/Nota/Actividad) that opens the conversation in a modal,
+     * rather than as a card in the page: as a card it competed with the
+     * activity feed for the same column and pushed everything else down.
      */
     protected function registerChatPanel(): void
     {
-        Event::listen('admin.leads.view.right.before', function (ViewRenderEventManager $viewRenderEventManager) {
+        Event::listen('admin.leads.view.actions.after', function (ViewRenderEventManager $viewRenderEventManager) {
             if (! bouncer()->hasPermission('whatsapp_chat')) {
                 return;
             }

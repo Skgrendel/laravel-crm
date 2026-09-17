@@ -26,6 +26,14 @@
         <env name="APP_ENV" value="testing" />
         <env name="APP_MAINTENANCE_DRIVER" value="file" />
         <env name="BCRYPT_ROUNDS" value="4" />
+        <!--
+            config/broadcasting.php reads BROADCAST_DRIVER first, falling
+            back to BROADCAST_CONNECTION — both must be set here or the real
+            .env's BROADCAST_DRIVER=reverb wins and tests try to hit a real
+            Reverb server.
+        -->
+        <env name="BROADCAST_DRIVER" value="log" />
+        <env name="BROADCAST_CONNECTION" value="log" />
         <env name="CACHE_STORE" value="array" />
         <env name="MAIL_MAILER" value="array" />
         <env name="PULSE_ENABLED" value="false" />
