@@ -39,6 +39,69 @@ class ZadarmaClient
     }
 
     /**
+     * Return the current call-forwarding (redirection) settings for a PBX
+     * extension: what happens on no-answer/always — nothing, ring another
+     * phone, or go to voicemail. This is the one PBX-admin resource that's
+     * actually writable through Zadarma's API (confirmed against their
+     * official SDK source — there's no API for SIP trunks or for changing
+     * which extension a DID number rings, both of those are panel-only).
+     */
+    public function getPbxRedirection(string $extension): array
+    {
+        return $this->get('/v1/pbx/redirection/', ['pbx_number' => $extension]);
+    }
+
+    /**
+     * Forward calls for an extension to a phone number.
+     */
+    public function setPbxPhoneRedirection(string $extension, string $destinationNumber, bool $always, bool $setCallerId): array
+    {
+        return $this->post('/v1/pbx/redirection/', [
+            'pbx_number'    => $extension,
+            'type'          => 'phone',
+            'condition'     => $always ? 'always' : 'noanswer',
+            'destination'   => $destinationNumber,
+            'set_caller_id' => $setCallerId ? 'on' : 'off',
+        ]);
+    }
+
+    /**
+     * Forward calls for an extension to voicemail (email delivery).
+     */
+    public function setPbxVoicemailRedirection(string $extension, string $destinationEmail, bool $always): array
+    {
+        return $this->post('/v1/pbx/redirection/', [
+            'pbx_number' => $extension,
+            'type'       => 'voicemail',
+            'condition'  => $always ? 'always' : 'noanswer',
+            'destination' => $destinationEmail,
+        ]);
+    }
+
+    /**
+     * Turn off call forwarding for an extension.
+     */
+    public function setPbxRedirectionOff(string $extension): array
+    {
+        return $this->post('/v1/pbx/redirection/', [
+            'pbx_number' => $extension,
+            'status'     => 'off',
+        ]);
+    }
+
+    /**
+     * The account's purchased DID numbers, including which SIP extension
+     * each currently rings (read-only — Zadarma's API has no endpoint to
+     * change that assignment, it's set in their panel).
+     */
+    public function getDirectNumbers(): array
+    {
+        $data = $this->get('/v1/direct_numbers/');
+
+        return $data['info'] ?? [];
+    }
+
+    /**
      * Perform a signed GET request against the Zadarma API.
      */
     public function get(string $method, array $params = []): array

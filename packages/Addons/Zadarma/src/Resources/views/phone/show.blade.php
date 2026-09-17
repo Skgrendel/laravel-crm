@@ -240,6 +240,70 @@
                 }, 400);
             }
 
+            /**
+             * If opened from a Lead's "Llamar" button before the widget
+             * was ready (see the click-to-call partial), the number to
+             * dial travels as a query param instead of a direct
+             * `window.zdrmWebPhone.call()` cross-window call.
+             */
+            function autoDialFromQueryString() {
+                const number = new URLSearchParams(window.location.search).get('dial');
+
+                if (! number) {
+                    return;
+                }
+
+                // window.zdrmWebPhone exists once widget-api.min.js has run, but
+                // registration with Zadarma's servers still needs a moment.
+                setTimeout(function () {
+                    if (window.zdrmWebPhone && typeof window.zdrmWebPhone.call === 'function') {
+                        window.zdrmWebPhone.call(number);
+                    }
+                }, 1500);
+            }
+
+            /**
+             * Zadarma's widget has no documented public event for incoming
+             * calls (confirmed by reading their source, not just docs), so
+             * this polls the one thing that IS reliably readable: the
+             * widget's own phone-number input, which it fills in and flags
+             * with an "incoming" class as soon as a call rings in.
+             */
+            function startIncomingCallWatcher() {
+                let lastSeenCallId = null;
+
+                setInterval(function () {
+                    if (! window.zdrmWebPhone || window.zdrmWebPhone.callState !== 'incoming') {
+                        return;
+                    }
+
+                    const input = document.getElementById('zdrm-webphone-phonenumber-input');
+                    const number = input ? input.value : null;
+
+                    if (! number || number === lastSeenCallId) {
+                        return;
+                    }
+
+                    lastSeenCallId = number;
+
+                    broadcast('incoming', { number: number });
+
+                    fetch(@json(route('admin.zadarma.phone.lookup_lead')) + '?number=' + encodeURIComponent(number), {
+                        credentials: 'same-origin',
+                        headers: { 'Accept': 'application/json' },
+                    })
+                        .then(function (response) { return response.json(); })
+                        .then(function (data) {
+                            if (data.found) {
+                                broadcast('incoming-lead-match', { url: data.url, number: number });
+                            }
+                        })
+                        .catch(function () {
+                            // Best-effort — the call still rings and shows on the widget regardless.
+                        });
+                }, 700);
+            }
+
             broadcast('connecting');
 
             fetch(@json(route('admin.zadarma.phone.webrtc_key')), {
@@ -300,6 +364,10 @@
                                     broadcast('ready');
 
                                     fitWindowToWidget();
+
+                                    autoDialFromQueryString();
+
+                                    startIncomingCallWatcher();
 
                                     return;
                                 }

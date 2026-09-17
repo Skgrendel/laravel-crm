@@ -35,6 +35,8 @@ class ZadarmaServiceProvider extends ServiceProvider
 
         $this->registerPhoneButton();
 
+        $this->registerCallButton();
+
         $this->app->register(ModuleServiceProvider::class);
     }
 
@@ -76,26 +78,64 @@ class ZadarmaServiceProvider extends ServiceProvider
     protected function registerPhoneButton(): void
     {
         Event::listen('admin.layout.body.after', function (ViewRenderEventManager $viewRenderEventManager) {
-            if (! app()->bound('auth') || ! auth()->guard('user')->check()) {
-                return;
-            }
-
-            $user = auth()->guard('user')->user();
-
-            if (! $this->userHasPhonePermission($user)) {
-                return;
-            }
-
-            if (! app(ZadarmaSettingRepository::class)->isEnabled()) {
-                return;
-            }
-
-            if (! app(ZadarmaExtensionMappingRepository::class)->findExtensionByUserId($user->id)) {
+            if (! $this->currentUserCanUsePhone()) {
                 return;
             }
 
             $viewRenderEventManager->addTemplate('zadarma::partials.phone-button');
         });
+    }
+
+    /**
+     * Add a "Llamar" (call) button next to a Lead's activity actions
+     * (Mail/File/Note/Activity) that click-to-calls the Lead's first phone
+     * number via `window.zdrmWebPhone.call()` — see
+     * `Resources/views/partials/call-button.blade.php`.
+     */
+    protected function registerCallButton(): void
+    {
+        Event::listen('admin.leads.view.actions.after', function (ViewRenderEventManager $viewRenderEventManager) {
+            if (! $this->currentUserCanUsePhone()) {
+                return;
+            }
+
+            $lead = $viewRenderEventManager->getParam('lead');
+
+            $number = collect($lead?->person?->contact_numbers ?? [])
+                ->pluck('value')
+                ->filter()
+                ->first();
+
+            if (! $number) {
+                return;
+            }
+
+            $viewRenderEventManager->addTemplate(view('zadarma::partials.call-button', ['number' => $number])->render());
+        });
+    }
+
+    /**
+     * Whether the currently logged-in user should see any Zadarma
+     * softphone UI: addon enabled and configured, an extension mapped to
+     * them, and their role holds the `zadarma_phone` permission.
+     */
+    protected function currentUserCanUsePhone(): bool
+    {
+        if (! app()->bound('auth') || ! auth()->guard('user')->check()) {
+            return false;
+        }
+
+        $user = auth()->guard('user')->user();
+
+        if (! $this->userHasPhonePermission($user)) {
+            return false;
+        }
+
+        if (! app(ZadarmaSettingRepository::class)->isEnabled()) {
+            return false;
+        }
+
+        return (bool) app(ZadarmaExtensionMappingRepository::class)->findExtensionByUserId($user->id);
     }
 
     /**

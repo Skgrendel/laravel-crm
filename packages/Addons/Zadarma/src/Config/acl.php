@@ -10,6 +10,9 @@ return [
             'admin.settings.zadarma.webhook_secret.regenerate',
             'admin.settings.zadarma.test_connection',
             'admin.settings.zadarma.extensions.update',
+            'admin.settings.zadarma.pbx.redirection.show',
+            'admin.settings.zadarma.pbx.redirection.update',
+            'admin.settings.zadarma.pbx.direct_numbers',
         ],
         'sort' => 3,
     ],
@@ -25,6 +28,7 @@ return [
         'route' => [
             'admin.zadarma.phone.show',
             'admin.zadarma.phone.webrtc_key',
+            'admin.zadarma.phone.lookup_lead',
         ],
         'sort' => 8,
     ],

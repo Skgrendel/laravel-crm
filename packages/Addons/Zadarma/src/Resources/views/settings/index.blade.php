@@ -90,6 +90,38 @@
                     ])->values()->toJson() }}"
                 ></v-zadarma-extensions>
             </div>
+
+            <!-- Call forwarding card -->
+            <div class="rounded-lg border border-gray-300 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                <p class="mb-1 text-base font-semibold text-gray-800 dark:text-white">
+                    @lang('zadarma::app.settings.index.redirection-title')
+                </p>
+
+                <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">
+                    @lang('zadarma::app.settings.index.redirection-info')
+                </p>
+
+                <v-zadarma-redirection
+                    :agents="{{ $users->map(fn ($user) => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'extension' => optional($extensionMappings->get($user->id))->extension,
+                    ])->filter(fn ($agent) => ! empty($agent['extension']))->values()->toJson() }}"
+                ></v-zadarma-redirection>
+            </div>
+
+            <!-- DID numbers card -->
+            <div class="rounded-lg border border-gray-300 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                <p class="mb-1 text-base font-semibold text-gray-800 dark:text-white">
+                    @lang('zadarma::app.settings.index.direct-numbers-title')
+                </p>
+
+                <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">
+                    @lang('zadarma::app.settings.index.direct-numbers-info')
+                </p>
+
+                <v-zadarma-direct-numbers></v-zadarma-direct-numbers>
+            </div>
         </div>
     </x-admin::form>
 
@@ -354,6 +386,225 @@
                             })
                             .catch((error) => {
                                 this.isSaving = false;
+
+                                this.$emitter.emit('add-flash', { type: 'error', message: error.response.data.message });
+                            });
+                    },
+                },
+            });
+        </script>
+
+        <script
+            type="text/x-template"
+            id="v-zadarma-redirection-template"
+        >
+            <div class="flex flex-col gap-2.5">
+                <div
+                    v-for="agent in agents"
+                    :key="agent.id"
+                    class="rounded-md border border-gray-200 p-3 dark:border-gray-800"
+                >
+                    <div class="flex items-center gap-4">
+                        <x-admin::avatar ::name="agent.name" />
+
+                        <span class="flex-1 text-sm text-gray-800 dark:text-white">
+                            @{{ agent.name }} <span class="text-gray-400">(@{{ agent.extension }})</span>
+                        </span>
+
+                        <button
+                            type="button"
+                            class="secondary-button"
+                            :disabled="agent._loading"
+                            @click="load(agent)"
+                        >
+                            @{{ agent._loading ? loadingLabel : loadLabel }}
+                        </button>
+                    </div>
+
+                    <div
+                        v-if="agent._loaded"
+                        class="mt-3 flex flex-wrap items-center gap-2.5"
+                    >
+                        <select
+                            v-model="agent._type"
+                            class="control h-9 rounded-md border px-2 text-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
+                        >
+                            <option value="off">@{{ offLabel }}</option>
+                            <option value="phone">@{{ phoneLabel }}</option>
+                            <option value="voicemail">@{{ voicemailLabel }}</option>
+                        </select>
+
+                        <select
+                            v-if="agent._type !== 'off'"
+                            v-model="agent._condition"
+                            class="control h-9 rounded-md border px-2 text-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
+                        >
+                            <option value="noanswer">@{{ noAnswerLabel }}</option>
+                            <option value="always">@{{ alwaysLabel }}</option>
+                        </select>
+
+                        <input
+                            v-if="agent._type !== 'off'"
+                            type="text"
+                            v-model="agent._destination"
+                            :placeholder="agent._type === 'voicemail' ? destinationEmailLabel : destinationPhoneLabel"
+                            class="control h-9 flex-1 rounded-md border px-2 text-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
+                        />
+
+                        <button
+                            type="button"
+                            class="primary-button"
+                            :disabled="agent._saving"
+                            @click="save(agent)"
+                        >
+                            @{{ agent._saving ? savingLabel : saveLabel }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </script>
+
+        <script type="module">
+            app.component('v-zadarma-redirection', {
+                template: '#v-zadarma-redirection-template',
+
+                props: {
+                    agents: Array,
+                },
+
+                data() {
+                    return {
+                        loadLabel: @json(trans('zadarma::app.settings.index.redirection-load-btn')),
+                        loadingLabel: '...',
+                        offLabel: @json(trans('zadarma::app.settings.index.redirection-off')),
+                        phoneLabel: @json(trans('zadarma::app.settings.index.redirection-phone')),
+                        voicemailLabel: @json(trans('zadarma::app.settings.index.redirection-voicemail')),
+                        alwaysLabel: @json(trans('zadarma::app.settings.index.redirection-condition-always')),
+                        noAnswerLabel: @json(trans('zadarma::app.settings.index.redirection-condition-noanswer')),
+                        destinationPhoneLabel: @json(trans('zadarma::app.settings.index.redirection-destination-phone')),
+                        destinationEmailLabel: @json(trans('zadarma::app.settings.index.redirection-destination-email')),
+                        saveLabel: @json(trans('zadarma::app.settings.index.redirection-save-btn')),
+                        savingLabel: '...',
+                    };
+                },
+
+                methods: {
+                    load(agent) {
+                        agent._loading = true;
+
+                        this.$axios.get("{{ url('admin/settings/zadarma/pbx/redirection') }}/" + encodeURIComponent(agent.extension))
+                            .then((response) => {
+                                agent._loading = false;
+                                agent._loaded = true;
+                                agent._type = response.data.current_status === 'on' ? (response.data.type || 'phone') : 'off';
+                                agent._condition = response.data.condition || 'noanswer';
+                                agent._destination = response.data.destination || '';
+                            })
+                            .catch((error) => {
+                                agent._loading = false;
+
+                                this.$emitter.emit('add-flash', { type: 'error', message: error.response.data.message });
+                            });
+                    },
+
+                    save(agent) {
+                        agent._saving = true;
+
+                        this.$axios.put("{{ url('admin/settings/zadarma/pbx/redirection') }}/" + encodeURIComponent(agent.extension), {
+                            type: agent._type,
+                            condition: agent._condition,
+                            destination: agent._destination,
+                        })
+                            .then(() => {
+                                agent._saving = false;
+
+                                this.$emitter.emit('add-flash', { type: 'success', message: @json(trans('zadarma::app.settings.index.redirection-save-success')) });
+                            })
+                            .catch((error) => {
+                                agent._saving = false;
+
+                                this.$emitter.emit('add-flash', { type: 'error', message: error.response.data.message });
+                            });
+                    },
+                },
+            });
+        </script>
+
+        <script
+            type="text/x-template"
+            id="v-zadarma-direct-numbers-template"
+        >
+            <div>
+                <button
+                    v-if="! loaded"
+                    type="button"
+                    class="secondary-button"
+                    :disabled="loading"
+                    @click="load"
+                >
+                    @{{ loading ? '...' : loadLabel }}
+                </button>
+
+                <div
+                    v-else-if="numbers.length === 0"
+                    class="text-xs text-gray-500 dark:text-gray-400"
+                >
+                    @{{ emptyLabel }}
+                </div>
+
+                <table
+                    v-else
+                    class="w-full text-left text-sm"
+                >
+                    <thead>
+                        <tr class="text-xs text-gray-500 dark:text-gray-400">
+                            <th class="pb-2">Number</th>
+                            <th class="pb-2">Description</th>
+                            <th class="pb-2">SIP</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <tr
+                            v-for="number in numbers"
+                            :key="number.number"
+                            class="border-t border-gray-100 dark:border-gray-800"
+                        >
+                            <td class="py-1.5 text-gray-800 dark:text-white">@{{ number.number }}</td>
+                            <td class="py-1.5 text-gray-500 dark:text-gray-400">@{{ number.description }}</td>
+                            <td class="py-1.5 text-gray-500 dark:text-gray-400">@{{ number.sip_name || number.sip }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </script>
+
+        <script type="module">
+            app.component('v-zadarma-direct-numbers', {
+                template: '#v-zadarma-direct-numbers-template',
+
+                data() {
+                    return {
+                        loaded: false,
+                        loading: false,
+                        numbers: [],
+                        loadLabel: @json(trans('zadarma::app.settings.index.direct-numbers-load-btn')),
+                        emptyLabel: @json(trans('zadarma::app.settings.index.direct-numbers-empty')),
+                    };
+                },
+
+                methods: {
+                    load() {
+                        this.loading = true;
+
+                        this.$axios.get("{{ route('admin.settings.zadarma.pbx.direct_numbers') }}")
+                            .then((response) => {
+                                this.loading = false;
+                                this.loaded = true;
+                                this.numbers = response.data.numbers;
+                            })
+                            .catch((error) => {
+                                this.loading = false;
 
                                 this.$emitter.emit('add-flash', { type: 'error', message: error.response.data.message });
                             });

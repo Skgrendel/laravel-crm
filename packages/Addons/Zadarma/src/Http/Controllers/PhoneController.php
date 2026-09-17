@@ -5,8 +5,10 @@ namespace Addons\Zadarma\Http\Controllers;
 use Addons\Zadarma\Repositories\ZadarmaCallLogRepository;
 use Addons\Zadarma\Repositories\ZadarmaExtensionMappingRepository;
 use Addons\Zadarma\Repositories\ZadarmaSettingRepository;
+use Addons\Zadarma\Services\PhoneLeadMatcher;
 use Addons\Zadarma\Services\ZadarmaClient;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Webkul\Admin\Http\Controllers\Controller;
 
@@ -16,6 +18,7 @@ class PhoneController extends Controller
         protected ZadarmaSettingRepository $zadarmaSettingRepository,
         protected ZadarmaExtensionMappingRepository $zadarmaExtensionMappingRepository,
         protected ZadarmaCallLogRepository $zadarmaCallLogRepository,
+        protected PhoneLeadMatcher $phoneLeadMatcher,
     ) {}
 
     /**
@@ -78,5 +81,27 @@ class PhoneController extends Controller
                 'message' => trans('zadarma::app.phone.key-error', ['error' => $exception->getMessage()]),
             ], 422);
         }
+    }
+
+    /**
+     * Resolve a phone number (from the softphone's own incoming-call
+     * screen-pop polling) to a matching Lead, so the main CRM window can
+     * navigate to it. Same matching rule as CallActivityRecorder.
+     */
+    public function lookupLead(Request $request): JsonResponse
+    {
+        $request->validate(['number' => 'required|string']);
+
+        $lead = $this->phoneLeadMatcher->findLeadByPhone($request->input('number'));
+
+        if (! $lead) {
+            return response()->json(['found' => false]);
+        }
+
+        return response()->json([
+            'found' => true,
+            'lead_id' => $lead->id,
+            'url' => route('admin.leads.edit', $lead->id),
+        ]);
     }
 }

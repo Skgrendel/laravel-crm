@@ -7,7 +7,6 @@ use Addons\Zadarma\Repositories\ZadarmaExtensionMappingRepository;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Webkul\Activity\Repositories\ActivityRepository;
-use Webkul\Contact\Repositories\PersonRepository;
 use Webkul\User\Models\UserProxy;
 
 /**
@@ -20,7 +19,7 @@ class CallActivityRecorder
         protected ZadarmaCallLogRepository $zadarmaCallLogRepository,
         protected ZadarmaExtensionMappingRepository $zadarmaExtensionMappingRepository,
         protected ActivityRepository $activityRepository,
-        protected PersonRepository $personRepository,
+        protected PhoneLeadMatcher $phoneLeadMatcher,
     ) {}
 
     /**
@@ -40,7 +39,7 @@ class CallActivityRecorder
             ? $call['caller_id']
             : $call['called_number'];
 
-        $lead = $this->findLeadByPhone($contactNumber);
+        $lead = $this->phoneLeadMatcher->findLeadByPhone($contactNumber);
 
         $activity = $lead ? $this->createActivity($call, $lead) : null;
 
@@ -65,60 +64,6 @@ class CallActivityRecorder
             'lead_id'             => $lead?->id,
             'activity_id'         => $activity?->id,
         ]);
-    }
-
-    /**
-     * Find the most recently updated Lead belonging to a Person whose
-     * contact numbers match the given phone number. Matching is done on
-     * digits only so formatting differences (+, spaces, dashes, country
-     * code variants) don't prevent a match.
-     *
-     * `contact_numbers` is a JSON array of free-form strings, so there's no
-     * reliable way to normalize it purely in SQL. Instead, a raw LIKE on the
-     * last 4 digits (almost never split by separators) narrows the
-     * candidates cheaply, then the full digit-only comparison happens in
-     * PHP to confirm the match.
-     */
-    protected function findLeadByPhone(?string $phone)
-    {
-        if (empty($phone)) {
-            return null;
-        }
-
-        $digitsOnly = preg_replace('/\D+/', '', $phone);
-
-        if (strlen($digitsOnly) < 6) {
-            return null;
-        }
-
-        $significant = substr($digitsOnly, -10);
-        $lastFour = substr($digitsOnly, -4);
-
-        $candidates = $this->personRepository
-            ->getModel()
-            ->newQuery()
-            ->whereNotNull('contact_numbers')
-            ->where('contact_numbers', 'like', '%'.$lastFour.'%')
-            ->orderByDesc('updated_at')
-            ->get();
-
-        $person = $candidates->first(function ($candidate) use ($significant) {
-            foreach ($candidate->contact_numbers ?? [] as $contactNumber) {
-                $candidateDigits = preg_replace('/\D+/', '', $contactNumber['value'] ?? '');
-
-                if ($candidateDigits && str_ends_with($candidateDigits, $significant)) {
-                    return true;
-                }
-            }
-
-            return false;
-        });
-
-        if (! $person) {
-            return null;
-        }
-
-        return $person->leads()->orderByDesc('updated_at')->first();
     }
 
     /**

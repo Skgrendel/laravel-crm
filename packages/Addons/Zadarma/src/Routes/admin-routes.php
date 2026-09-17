@@ -1,6 +1,7 @@
 <?php
 
 use Addons\Zadarma\Http\Controllers\ExtensionMappingController;
+use Addons\Zadarma\Http\Controllers\PbxController;
 use Addons\Zadarma\Http\Controllers\PhoneController;
 use Addons\Zadarma\Http\Controllers\SettingsController;
 use Addons\Zadarma\Http\Controllers\WebhookController;
@@ -18,6 +19,14 @@ Route::prefix('settings/zadarma')->group(function () {
     });
 
     Route::put('extensions', [ExtensionMappingController::class, 'update'])->name('admin.settings.zadarma.extensions.update');
+
+    Route::controller(PbxController::class)->prefix('pbx')->group(function () {
+        Route::get('redirection/{extension}', 'showRedirection')->name('admin.settings.zadarma.pbx.redirection.show');
+
+        Route::put('redirection/{extension}', 'updateRedirection')->name('admin.settings.zadarma.pbx.redirection.update');
+
+        Route::get('direct-numbers', 'directNumbers')->name('admin.settings.zadarma.pbx.direct_numbers');
+    });
 });
 
 /**
@@ -28,6 +37,8 @@ Route::controller(PhoneController::class)->prefix('zadarma/phone')->group(functi
     Route::get('', 'show')->name('admin.zadarma.phone.show');
 
     Route::get('webrtc-key', 'webrtcKey')->name('admin.zadarma.phone.webrtc_key');
+
+    Route::get('lookup-lead', 'lookupLead')->name('admin.zadarma.phone.lookup_lead');
 });
 
 /**
