@@ -2,6 +2,7 @@
     "name": "addons/zadarma",
     "license": "proprietary",
     "require": {
+        "krayin/laravel-admin": "^1.0",
         "krayin/laravel-core": "^1.0",
         "krayin/laravel-user": "^1.0"
     },
