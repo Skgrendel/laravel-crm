@@ -31,6 +31,11 @@ return [
         'media-contact' => 'Contacto',
         'media-unknown' => 'Adjunto',
         'media-not-downloadable' => 'El archivo todavía no se descarga al CRM — abrilo desde WhatsApp.',
+        'attach-btn' => 'Adjuntar archivo',
+        'today' => 'Hoy',
+        'yesterday' => 'Ayer',
+        'hidden-number' => 'Número oculto por WhatsApp',
+        'owner' => 'Atiende: :name',
     ],
 
     'settings' => [

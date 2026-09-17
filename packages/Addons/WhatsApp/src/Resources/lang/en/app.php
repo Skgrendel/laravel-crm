@@ -31,6 +31,11 @@ return [
         'media-contact' => 'Contact',
         'media-unknown' => 'Attachment',
         'media-not-downloadable' => 'The file isn\'t downloaded into the CRM yet — open it in WhatsApp.',
+        'attach-btn' => 'Attach a file',
+        'today' => 'Today',
+        'yesterday' => 'Yesterday',
+        'hidden-number' => 'Number hidden by WhatsApp',
+        'owner' => 'Handled by :name',
     ],
 
     'settings' => [

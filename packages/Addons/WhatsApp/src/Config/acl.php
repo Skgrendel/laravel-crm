@@ -28,6 +28,7 @@ return [
         'route' => [
             'admin.whatsapp.messages.index',
             'admin.whatsapp.messages.store',
+            'admin.whatsapp.messages.media',
         ],
         'sort' => 9,
     ],

@@ -25,6 +25,9 @@ class WhatsAppMessage extends Model implements WhatsAppMessageContract
         'type',
         'body',
         'media_type',
+        'media_path',
+        'media_name',
+        'media_mime',
         'sent_at',
     ];
 

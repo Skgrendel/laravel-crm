@@ -24,19 +24,103 @@
             background-color: #1faa52;
         }
 
-        .whatsapp-bubble-received {
-            background-color: #f3f4f6;
-            color: #1f2937;
+        .whatsapp-chat-header {
+            background-color: #f0f2f5;
+            border-bottom: 1px solid #e5e7eb;
         }
 
-        .whatsapp-bubble-sent {
-            background-color: var(--brand-color, #0e90d9);
+        .dark .whatsapp-chat-header {
+            background-color: #202c33;
+            border-bottom-color: #374151;
+        }
+
+        .whatsapp-avatar {
+            align-items: center;
+            background-color: #25d366;
+            border-radius: 9999px;
             color: #ffffff;
+            display: flex;
+            flex-shrink: 0;
+            font-size: 15px;
+            font-weight: 600;
+            height: 40px;
+            justify-content: center;
+            text-transform: uppercase;
+            width: 40px;
         }
 
+        /* The thread gets its own surface so bubbles read against a backdrop
+           the way they do in WhatsApp, instead of floating on the card. */
+        .whatsapp-thread {
+            background-color: #efeae2;
+        }
+
+        .dark .whatsapp-thread {
+            background-color: #0b141a;
+        }
+
+        .whatsapp-date-pill {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 1px 1px rgba(11, 20, 26, 0.13);
+            color: #54656f;
+            font-size: 11px;
+            padding: 4px 10px;
+            text-transform: capitalize;
+        }
+
+        .dark .whatsapp-date-pill {
+            background-color: #182229;
+            color: #8696a0;
+        }
+
+        .whatsapp-bubble {
+            border-radius: 8px;
+            box-shadow: 0 1px 1px rgba(11, 20, 26, 0.13);
+            font-size: 14px;
+            padding: 6px 9px;
+            word-break: break-word;
+        }
+
+        .whatsapp-bubble-meta {
+            align-self: flex-end;
+            font-size: 10px;
+            line-height: 1;
+            opacity: 0.6;
+        }
+
+        .whatsapp-bubble-received {
+            background-color: #ffffff;
+            color: #111b21;
+        }
+
+        /* WhatsApp's own outgoing green: the agent reads this thread next to
+           the real app all day, so matching it avoids a mental translation. */
+        .whatsapp-bubble-sent {
+            background-color: #d9fdd3;
+            color: #111b21;
+        }
+
+        /* Sent from the phone, not the CRM — same side as our own sends but
+           visually distinct, because attribution matters to the team. */
         .whatsapp-bubble-echo {
-            border: 1px dashed #9ca3af;
-            color: #4b5563;
+            background-color: #f7f8c6;
+            color: #111b21;
+        }
+
+        .dark .whatsapp-bubble-received {
+            background-color: #202c33;
+            color: #e9edef;
+        }
+
+        .dark .whatsapp-bubble-sent {
+            background-color: #005c4b;
+            color: #e9edef;
+        }
+
+        .dark .whatsapp-bubble-echo {
+            background-color: #3b3a1f;
+            color: #e9edef;
         }
 
         /* Marks a message that carried an attachment. The file itself isn't
@@ -53,14 +137,27 @@
             padding: 1px 8px;
         }
 
-        .dark .whatsapp-bubble-received {
-            background-color: #1f2937;
-            color: #e5e7eb;
+        /* Downloadable, unlike the plain chip: the CRM holds this file. */
+        .whatsapp-media-link {
+            cursor: pointer;
+            text-decoration: underline;
         }
 
-        .dark .whatsapp-bubble-echo {
-            color: #d1d5db;
+        .whatsapp-attach-btn {
+            align-items: center;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            color: #4b5563;
+            display: flex;
+            height: 40px;
+            justify-content: center;
+            width: 40px;
         }
+
+        .whatsapp-attach-btn:hover {
+            background-color: #f3f4f6;
+        }
+
     </style>
 @endPushOnce
 
@@ -157,13 +254,23 @@
                 @close="onClose"
             >
             <template v-slot:header="{ toggle }">
-                <div class="flex items-center justify-between gap-2.5 border-b px-4 py-3 dark:border-gray-800">
-                    <p class="text-base font-semibold text-gray-800 dark:text-white">
-                        @lang('whatsapp::app.chat.title')
-                    </p>
+                <div class="whatsapp-chat-header flex items-center justify-between gap-2.5 px-4 py-3">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <span class="whatsapp-avatar">@{{ contactInitial }}</span>
+
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-semibold text-gray-800 dark:text-white">
+                                @{{ contact ? contact.name : chatTitle }}
+                            </p>
+
+                            <p class="truncate text-xs text-gray-500 dark:text-gray-400">
+                                @{{ contactSubtitle }}
+                            </p>
+                        </div>
+                    </div>
 
                     <span
-                        class="icon-cross-large cursor-pointer text-3xl hover:rounded-md hover:bg-gray-100 dark:text-white dark:hover:bg-gray-950"
+                        class="icon-cross-large cursor-pointer text-3xl hover:rounded-md hover:bg-gray-200 dark:text-white dark:hover:bg-gray-950"
                         @click="toggle"
                     ></span>
                 </div>
@@ -172,7 +279,7 @@
             <template v-slot:content>
             <div
                 ref="scrollArea"
-                class="flex max-h-[60vh] min-h-[320px] flex-col gap-2 overflow-y-auto p-4"
+                class="whatsapp-thread flex max-h-[60vh] min-h-[360px] flex-col gap-1.5 overflow-y-auto p-4"
             >
                 <p
                     v-if="! loading && messages.length === 0"
@@ -181,34 +288,81 @@
                     @{{ emptyLabel }}
                 </p>
 
-                <div
-                    v-for="message in messages"
+                <template
+                    v-for="(message, index) in messages"
                     :key="message.id"
-                    class="flex flex-col"
-                    :class="message.type === 'received' ? 'items-start' : 'items-end'"
                 >
                     <div
-                        class="flex max-w-[80%] flex-col gap-1 rounded-lg px-3 py-2 text-sm"
-                        :class="bubbleClass(message)"
+                        v-if="showsDateSeparator(index)"
+                        class="my-2 flex justify-center"
                     >
-                        <span
-                            v-if="message.media_type"
-                            class="whatsapp-media-chip"
-                            :title="mediaHintLabel"
-                        >
-                            @{{ mediaLabel(message.media_type) }}
-                        </span>
-
-                        <span v-if="message.body">@{{ message.body }}</span>
+                        <span class="whatsapp-date-pill">@{{ formatDate(message.sent_at) }}</span>
                     </div>
 
-                    <span class="mt-0.5 text-[10px] text-gray-400">
-                        @{{ typeLabels[message.type] }} · @{{ formatTime(message.sent_at) }}
-                    </span>
-                </div>
+                    <div
+                        class="flex"
+                        :class="message.type === 'received' ? 'justify-start' : 'justify-end'"
+                    >
+                        <div
+                            class="whatsapp-bubble flex max-w-[75%] flex-col gap-1"
+                            :class="bubbleClass(message)"
+                        >
+                            <a
+                                v-if="message.media_path"
+                                class="whatsapp-media-chip whatsapp-media-link"
+                                :href="mediaUrl(message)"
+                            >
+                                @{{ mediaLabel(message.media_type) }}@{{ message.media_name ? ' · ' + message.media_name : '' }}
+                            </a>
+
+                            <span
+                                v-else-if="message.media_type"
+                                class="whatsapp-media-chip"
+                                :title="mediaHintLabel"
+                            >
+                                @{{ mediaLabel(message.media_type) }}
+                            </span>
+
+                            <span v-if="message.body">@{{ message.body }}</span>
+
+                            <span class="whatsapp-bubble-meta">
+                                <span v-if="message.type !== 'received'">@{{ typeLabels[message.type] }} · </span>@{{ formatTime(message.sent_at) }}
+                            </span>
+                        </div>
+                    </div>
+                </template>
             </div>
 
-            <div class="flex items-center gap-2.5 border-t border-gray-300 p-4 dark:border-gray-800">
+            <div class="flex flex-col gap-2 border-t border-gray-300 p-4 dark:border-gray-800">
+                <div
+                    v-if="attachment"
+                    class="flex items-center justify-between gap-2 rounded-md bg-gray-100 px-3 py-1.5 text-xs dark:bg-gray-800 dark:text-gray-200"
+                >
+                    <span class="truncate">@{{ attachment.name }}</span>
+
+                    <span
+                        class="cursor-pointer font-semibold"
+                        @click="clearAttachment"
+                    >&times;</span>
+                </div>
+
+                <div class="flex items-center gap-2.5">
+                <input
+                    ref="fileInput"
+                    type="file"
+                    class="hidden"
+                    @change="onFilePicked"
+                />
+
+                <button
+                    type="button"
+                    class="whatsapp-attach-btn"
+                    :title="attachLabel"
+                    @click="$refs.fileInput.click()"
+                >
+                    <span class="icon-attachment text-xl"></span>
+                </button>
+
                 <input
                     type="text"
                     v-model="draft"
@@ -220,11 +374,12 @@
                 <button
                     type="button"
                     class="primary-button"
-                    :disabled="sending || ! draft.trim()"
+                    :disabled="sending || (! draft.trim() && ! attachment)"
                     @click="send"
                 >
                     @{{ sendLabel }}
                 </button>
+                </div>
                 </div>
             </template>
             </v-modal>
@@ -243,10 +398,13 @@
             data() {
                 return {
                     messages: [],
+                    contact: null,
                     draft: '',
                     loading: true,
                     sending: false,
+                    attachment: null,
                     pollTimer: null,
+                    attachLabel: @json(trans('whatsapp::app.chat.attach-btn')),
                     emptyLabel: @json(trans('whatsapp::app.chat.empty')),
                     placeholderLabel: @json(trans('whatsapp::app.chat.placeholder')),
                     sendLabel: @json(trans('whatsapp::app.chat.send-btn')),
@@ -256,6 +414,11 @@
                         echo: @json(trans('whatsapp::app.chat.type-echo')),
                     },
                     mediaHintLabel: @json(trans('whatsapp::app.chat.media-not-downloadable')),
+                    chatTitle: @json(trans('whatsapp::app.chat.title')),
+                    todayLabel: @json(trans('whatsapp::app.chat.today')),
+                    yesterdayLabel: @json(trans('whatsapp::app.chat.yesterday')),
+                    hiddenNumberLabel: @json(trans('whatsapp::app.chat.hidden-number')),
+                    ownerLabelTemplate: @json(trans('whatsapp::app.chat.owner', ['name' => '__NAME__'])),
                     mediaLabels: {
                         image: @json(trans('whatsapp::app.chat.media-image')),
                         video: @json(trans('whatsapp::app.chat.media-video')),
@@ -266,6 +429,33 @@
                         contact: @json(trans('whatsapp::app.chat.media-contact')),
                     },
                 };
+            },
+
+            computed: {
+                contactInitial() {
+                    const name = this.contact?.name ?? '';
+                    const initial = name.trim().charAt(0);
+
+                    // A LID contact has digits for a name, which makes a
+                    // useless initial — fall back to the WhatsApp mark.
+                    return /[a-z]/i.test(initial) ? initial : '#';
+                },
+
+                contactSubtitle() {
+                    if (! this.contact) {
+                        return '';
+                    }
+
+                    const parts = [];
+
+                    parts.push(this.contact.is_hidden_number ? this.hiddenNumberLabel : this.contact.phone);
+
+                    if (this.contact.owner) {
+                        parts.push(this.ownerLabelTemplate.replace('__NAME__', this.contact.owner));
+                    }
+
+                    return parts.join(' · ');
+                },
             },
 
             mounted() {
@@ -287,6 +477,7 @@
                     this.$axios.get("{{ url('admin/leads') }}/" + this.leadId + '/whatsapp/messages')
                         .then((response) => {
                             this.messages = response.data.messages;
+                            this.contact = response.data.contact;
                             this.loading = false;
                             this.scrollToBottom();
                         })
@@ -298,16 +489,32 @@
                 send() {
                     const message = this.draft.trim();
 
-                    if (! message) {
+                    if (! message && ! this.attachment) {
                         return;
+                    }
+
+                    /**
+                     * Always multipart, even for plain text: keeping one
+                     * request shape avoids a second code path, and the
+                     * endpoint takes either field on its own.
+                     */
+                    const payload = new FormData();
+
+                    if (message) {
+                        payload.append('message', message);
+                    }
+
+                    if (this.attachment) {
+                        payload.append('attachment', this.attachment);
                     }
 
                     this.sending = true;
 
-                    this.$axios.post("{{ url('admin/leads') }}/" + this.leadId + '/whatsapp/messages', { message })
+                    this.$axios.post("{{ url('admin/leads') }}/" + this.leadId + '/whatsapp/messages', payload)
                         .then((response) => {
                             this.sending = false;
                             this.draft = '';
+                            this.clearAttachment();
                             this.appendIfNew(response.data.message);
                         })
                         .catch((error) => {
@@ -393,8 +600,54 @@
                     return this.mediaLabels[mediaType] ?? @json(trans('whatsapp::app.chat.media-unknown'));
                 },
 
+                mediaUrl(message) {
+                    return "{{ url('admin/leads') }}/" + this.leadId + '/whatsapp/messages/' + message.id + '/media';
+                },
+
+                onFilePicked(event) {
+                    this.attachment = event.target.files[0] ?? null;
+                },
+
+                clearAttachment() {
+                    this.attachment = null;
+
+                    // The input keeps its old value otherwise, so picking the
+                    // same file again would fire no change event.
+                    if (this.$refs.fileInput) {
+                        this.$refs.fileInput.value = '';
+                    }
+                },
+
                 formatTime(value) {
-                    return new Date(value).toLocaleString();
+                    return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                },
+
+                formatDate(value) {
+                    const date = new Date(value);
+                    const today = new Date();
+                    const yesterday = new Date();
+                    yesterday.setDate(today.getDate() - 1);
+
+                    if (date.toDateString() === today.toDateString()) {
+                        return this.todayLabel;
+                    }
+
+                    if (date.toDateString() === yesterday.toDateString()) {
+                        return this.yesterdayLabel;
+                    }
+
+                    return date.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' });
+                },
+
+                showsDateSeparator(index) {
+                    if (index === 0) {
+                        return true;
+                    }
+
+                    const current = new Date(this.messages[index].sent_at).toDateString();
+                    const previous = new Date(this.messages[index - 1].sent_at).toDateString();
+
+                    return current !== previous;
                 },
 
                 scrollToBottom() {

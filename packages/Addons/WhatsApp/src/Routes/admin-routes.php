@@ -33,6 +33,8 @@ Route::controller(ChatController::class)->prefix('leads/{leadId}/whatsapp/messag
     Route::get('', 'index')->name('admin.whatsapp.messages.index');
 
     Route::post('', 'store')->name('admin.whatsapp.messages.store');
+
+    Route::get('{messageId}/media', 'media')->name('admin.whatsapp.messages.media');
 });
 
 /**

@@ -2,6 +2,9 @@
 
 use Addons\WhatsApp\Models\WhatsAppConversation;
 use Addons\WhatsApp\Models\WhatsAppMessage;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Webkul\Lead\Models\Lead;
 
 /**
@@ -75,6 +78,25 @@ it('lists the message history for a lead that has a conversation', function () {
     deleteChatFixture($conversation);
 });
 
+it('returns who the agent is talking to alongside the history', function () {
+    $admin = getDefaultAdmin();
+    $conversation = createChatFixtureConversation();
+
+    try {
+        $contact = test()->actingAs($admin)
+            ->getJson(route('admin.whatsapp.messages.index', $conversation->lead_id))
+            ->assertOK()
+            ->json('contact');
+
+        expect($contact['phone'])->toBe($conversation->phone_number);
+        expect($contact['name'])->not->toBeEmpty();
+        // A plain @s.whatsapp.net contact has a real, dialable number.
+        expect($contact['is_hidden_number'])->toBeFalse();
+    } finally {
+        deleteChatFixture($conversation);
+    }
+});
+
 it('rejects sending a message to a lead with no conversation', function () {
     $admin = getDefaultAdmin();
 
@@ -102,6 +124,74 @@ it('rejects sending a message when the microservice connection is not configured
         ->assertJson(['message' => trans('whatsapp::app.chat.not-configured')]);
 
     deleteChatFixture($conversation);
+});
+
+it('sends an attachment, keeps a copy, and serves it back only through the lead it belongs to', function () {
+    $admin = getDefaultAdmin();
+    $conversation = createChatFixtureConversation();
+
+    whatsAppSettingsRepository()->getSettings()->update([
+        'service_url' => 'http://microservice.test',
+        'session_id'  => 'test',
+        'api_key'     => 'test-key',
+    ]);
+
+    Http::fake([
+        '*/send-media*' => Http::response(['waMessageId' => 'wa-media-'.uniqid()]),
+    ]);
+
+    Storage::fake();
+
+    try {
+        $response = test()->actingAs($admin)->postJson(
+            route('admin.whatsapp.messages.store', $conversation->lead_id),
+            [
+                'message'    => 'Te mando el contrato',
+                'attachment' => UploadedFile::fake()->create('contrato.pdf', 12, 'application/pdf'),
+            ]
+        )->assertOK();
+
+        $message = WhatsAppMessage::find($response->json('message.id'));
+
+        expect($message->media_type)->toBe('document');
+        expect($message->media_name)->toBe('contrato.pdf');
+        expect($message->body)->toBe('Te mando el contrato');
+
+        // The copy the CRM keeps: WhatsApp is not an archive, and the
+        // document trail belongs to the Lead.
+        Storage::assertExists($message->media_path);
+
+        // The file travels as the raw body, not multipart or base64.
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), '/send-media')
+                && str_contains($request->url(), 'fileName=contrato.pdf');
+        });
+
+        test()->actingAs($admin)
+            ->get(route('admin.whatsapp.messages.media', [$conversation->lead_id, $message->id]))
+            ->assertOK()
+            ->assertDownload('contrato.pdf');
+
+        // Same message id, wrong Lead: the file must not come back.
+        test()->actingAs($admin)
+            ->get(route('admin.whatsapp.messages.media', [999999999, $message->id]))
+            ->assertNotFound();
+    } finally {
+        deleteChatFixture($conversation);
+    }
+});
+
+it('rejects a send with neither text nor an attachment', function () {
+    $admin = getDefaultAdmin();
+    $conversation = createChatFixtureConversation();
+
+    try {
+        test()->actingAs($admin)
+            ->postJson(route('admin.whatsapp.messages.store', $conversation->lead_id), [])
+            ->assertStatus(422);
+    } finally {
+        deleteChatFixture($conversation);
+    }
 });
 
 it('surfaces a friendly error when the microservice is unreachable, without crashing', function () {
