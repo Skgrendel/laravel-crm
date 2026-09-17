@@ -63,6 +63,7 @@
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/",
             "Addons\\Zadarma\\": "packages/Addons/Zadarma/src",
+            "Addons\\WhatsApp\\": "packages/Addons/WhatsApp/src",
             "Webkul\\Activity\\": "packages/Webkul/Activity/src",
             "Webkul\\Admin\\": "packages/Webkul/Admin/src",
             "Webkul\\Attribute\\": "packages/Webkul/Attribute/src",

@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin/mail/inbound-parse',
             'admin/web-forms/forms/*',
             'admin/zadarma/webhook/*',
+            'admin/whatsapp/webhook',
         ]);
 
         $middleware->api(prepend: [

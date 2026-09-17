@@ -1,5 +1,6 @@
 <?php
 
+use Addons\WhatsApp\Providers\WhatsAppServiceProvider;
 use Addons\Zadarma\Providers\ZadarmaServiceProvider;
 use App\Providers\AppServiceProvider;
 use Barryvdh\DomPDF\ServiceProvider;
@@ -43,6 +44,7 @@ return [
      * Addon Service Providers...
      */
     ZadarmaServiceProvider::class,
+    WhatsAppServiceProvider::class,
 
     /*
      * Webkul Service Providers...
