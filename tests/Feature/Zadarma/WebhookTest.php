@@ -43,7 +43,13 @@ it('rejects a NOTIFY_END event with an invalid signature', function () {
         ->assertForbidden();
 });
 
-it('accepts a correctly signed NOTIFY_END event and logs the call even with no matching lead', function () {
+/**
+ * This used to assert the opposite — that an unmatched call logged and
+ * stopped there. It now captures the Lead, so the two channels behave the
+ * same way: a call from a stranger is as much a lead as a WhatsApp message
+ * from one.
+ */
+it('accepts a correctly signed NOTIFY_END event and captures a lead for an unknown number', function () {
     $settings = zadarmaSettings();
 
     if (empty($settings->api_secret)) {
@@ -75,15 +81,26 @@ it('accepts a correctly signed NOTIFY_END event and logs the call even with no m
     $log = ZadarmaCallLog::where('pbx_call_id', $pbxCallId)->first();
 
     expect($log)->not->toBeNull();
-    expect($log->lead_id)->toBeNull();
-    expect($log->duration)->toBe(42);
-    expect($log->disposition)->toBe('answered');
+    try {
+        expect($log->lead_id)->not->toBeNull();
+        expect($log->duration)->toBe(42);
+        expect($log->disposition)->toBe('answered');
 
-    // Retried delivery of the same call must not create a second log row.
-    test()->post(route('admin.zadarma.webhook', $settings->webhook_secret), $payload, ['Signature' => $signature])
-        ->assertNoContent();
+        // Retried delivery of the same call must not create a second log row.
+        test()->post(route('admin.zadarma.webhook', $settings->webhook_secret), $payload, ['Signature' => $signature])
+            ->assertNoContent();
 
-    expect(ZadarmaCallLog::where('pbx_call_id', $pbxCallId)->count())->toBe(1);
+        expect(ZadarmaCallLog::where('pbx_call_id', $pbxCallId)->count())->toBe(1);
+    } finally {
+        // Lead before Person: `leads.person_id` is ON DELETE RESTRICT.
+        $lead = Webkul\Lead\Models\Lead::find($log->lead_id);
+        $personId = $lead?->person_id;
 
-    $log->delete();
+        ZadarmaCallLog::where('pbx_call_id', $pbxCallId)->delete();
+        $lead?->delete();
+
+        if ($personId) {
+            Webkul\Contact\Models\Person::where('id', $personId)->delete();
+        }
+    }
 });

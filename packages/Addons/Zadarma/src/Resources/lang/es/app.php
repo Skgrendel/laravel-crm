@@ -11,6 +11,11 @@ return [
         'phone-title' => 'Softphone Zadarma',
     ],
 
+    'lead' => [
+        'title-from-call' => 'Llamada :number',
+        'person-from-call' => 'Llamada :number',
+    ],
+
     'phone' => [
         'button-title' => 'Abrir softphone',
         'page-title' => 'Softphone Zadarma',

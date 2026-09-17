@@ -159,8 +159,15 @@ class WhatsAppLeadCreator
         $pipeline = $this->pipelineRepository->getDefaultPipeline();
         $stage = $pipeline->stages()->first();
 
+        /**
+         * Created when missing instead of falling back to `first()`: sources
+         * are seeded in the installation's language, so there is no
+         * "WhatsApp" row out of the box and the fallback quietly attributed
+         * every WhatsApp lead to whatever came first — "Correo Electrónico"
+         * here. Reports by source were wrong from the start because of it.
+         */
         $source = $this->sourceRepository->findOneByField('name', 'WhatsApp')
-            ?: $this->sourceRepository->first();
+            ?: $this->sourceRepository->create(['name' => 'WhatsApp']);
 
         $data = [
             'entity_type' => 'leads',

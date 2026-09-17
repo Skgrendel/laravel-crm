@@ -41,15 +41,24 @@ class CallActivityRecorder
 
         $lead = $this->phoneLeadMatcher->findLeadByPhone($contactNumber);
 
-        $activity = $lead ? $this->createActivity($call, $lead) : null;
-
+        /**
+         * A call from a number nobody has in the CRM is a lead, the same way
+         * a WhatsApp message from a stranger is. Applies to outgoing calls
+         * too: an agent dialling a number that isn't on file is prospecting,
+         * and that belongs in the pipeline rather than only in the call log.
+         */
         if (! $lead) {
-            Log::info('Zadarma call finished but no matching Lead was found.', [
+            $lead = app(CallLeadCreator::class)->createFromCall($call, $contactNumber);
+
+            Log::info('Zadarma call from an unknown number.', [
                 'pbx_call_id' => $call['pbx_call_id'],
                 'direction'   => $call['direction'],
                 'number'      => $contactNumber,
+                'created_lead_id' => $lead?->id,
             ]);
         }
+
+        $activity = $lead ? $this->createActivity($call, $lead) : null;
 
         $this->zadarmaCallLogRepository->create([
             'pbx_call_id'         => $call['pbx_call_id'],
