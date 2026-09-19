@@ -48,6 +48,17 @@ class SessionController extends Controller
         }
     }
 
+    public function logout(): JsonResponse
+    {
+        try {
+            $this->client()->logout();
+
+            return response()->json(['message' => trans('whatsapp::app.settings.index.logout-success')]);
+        } catch (\Throwable $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+    }
+
     protected function client(): WhatsAppClient
     {
         $settings = $this->whatsAppSettingRepository->getSettings();

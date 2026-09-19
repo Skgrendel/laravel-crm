@@ -326,6 +326,16 @@
                         >
                             @{{ reconnectLabel }}
                         </button>
+
+                        <button
+                            v-if="isConfigured && status !== 'disconnected'"
+                            type="button"
+                            class="secondary-button !border-red-600 !text-red-600 dark:!text-red-400"
+                            :disabled="loggingOut"
+                            @click="logout"
+                        >
+                            @{{ logoutLabel }}
+                        </button>
                     </div>
                 </div>
 
@@ -392,12 +402,15 @@
                         qr: null,
                         loadingStatus: false,
                         reconnecting: false,
+                        loggingOut: false,
                         qrSecondsLeft: 20,
                         statusPollTimer: null,
                         qrRefreshTimer: null,
                         qrCountdownTimer: null,
                         checkStatusLabel: @json(trans('whatsapp::app.settings.index.check-status-btn')),
                         reconnectLabel: @json(trans('whatsapp::app.settings.index.reconnect-btn')),
+                        logoutLabel: @json(trans('whatsapp::app.settings.index.logout-btn')),
+                        logoutConfirmMessage: @json(trans('whatsapp::app.settings.index.logout-confirm')),
                         notConfiguredLabel: @json(trans('whatsapp::app.settings.index.not-configured')),
                         qrLoadingLabel: @json(trans('whatsapp::app.settings.index.qr-loading')),
                         connectedLabelTemplate: @json(trans('whatsapp::app.settings.index.status-connected', ['number' => '__NUMBER__'])),
@@ -529,6 +542,29 @@
                                     })
                                     .catch((error) => {
                                         this.reconnecting = false;
+
+                                        this.$emitter.emit('add-flash', { type: 'error', message: error.response?.data?.message });
+                                    });
+                            },
+                        });
+                    },
+
+                    logout() {
+                        this.$emitter.emit('open-confirm-modal', {
+                            message: this.logoutConfirmMessage,
+                            agree: () => {
+                                this.loggingOut = true;
+
+                                this.$axios.post("{{ route('admin.settings.whatsapp.session.logout') }}")
+                                    .then((response) => {
+                                        this.loggingOut = false;
+
+                                        this.$emitter.emit('add-flash', { type: 'success', message: response.data.message });
+
+                                        this.checkStatus();
+                                    })
+                                    .catch((error) => {
+                                        this.loggingOut = false;
 
                                         this.$emitter.emit('add-flash', { type: 'error', message: error.response?.data?.message });
                                     });

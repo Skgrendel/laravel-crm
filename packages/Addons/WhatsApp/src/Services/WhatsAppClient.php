@@ -48,6 +48,17 @@ class WhatsAppClient
         $this->post("/sessions/{$this->sessionId}/reconnect");
     }
 
+    /**
+     * Unlinks the currently connected number (a real WhatsApp-side logout,
+     * not just a local reconnect) and starts a fresh session — for
+     * switching to a different phone number without needing the old phone
+     * in hand to unlink it first.
+     */
+    public function logout(): void
+    {
+        $this->post("/sessions/{$this->sessionId}/logout");
+    }
+
     protected function get(string $path): array
     {
         return $this->request('GET', $path);

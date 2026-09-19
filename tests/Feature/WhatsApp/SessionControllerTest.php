@@ -64,3 +64,41 @@ it('surfaces a friendly error checking status when the microservice is unreachab
         ->getJson(route('admin.settings.whatsapp.session.status'))
         ->assertStatus(422);
 });
+
+it('rejects logging out the session when the microservice connection is not configured', function () {
+    $admin = getDefaultAdmin();
+
+    whatsAppSettingsRepository()->getSettings()->update([
+        'session_id' => null,
+        'service_url' => null,
+        'api_key' => null,
+    ]);
+
+    test()->actingAs($admin)
+        ->postJson(route('admin.settings.whatsapp.session.logout'))
+        ->assertStatus(422);
+});
+
+it('surfaces a friendly error logging out when the microservice is unreachable', function () {
+    $admin = getDefaultAdmin();
+
+    whatsAppSettingsRepository()->getSettings()->update([
+        // Reserved/unused local port — fails fast, no real network call.
+        'service_url' => 'http://127.0.0.1:1',
+        'session_id' => 'test',
+        'api_key' => 'test-key',
+    ]);
+
+    test()->actingAs($admin)
+        ->postJson(route('admin.settings.whatsapp.session.logout'))
+        ->assertStatus(422);
+});
+
+it('shows the disconnect button on the settings page', function () {
+    $admin = getDefaultAdmin();
+
+    test()->actingAs($admin)
+        ->get(route('admin.settings.whatsapp.index'))
+        ->assertOK()
+        ->assertSee(route('admin.settings.whatsapp.session.logout'), false);
+});

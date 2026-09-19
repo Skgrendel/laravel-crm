@@ -24,6 +24,8 @@ Route::prefix('settings/whatsapp')->group(function () {
         Route::get('qr', 'qr')->name('admin.settings.whatsapp.session.qr');
 
         Route::post('reconnect', 'reconnect')->name('admin.settings.whatsapp.session.reconnect');
+
+        Route::post('logout', 'logout')->name('admin.settings.whatsapp.session.logout');
     });
 });
 
