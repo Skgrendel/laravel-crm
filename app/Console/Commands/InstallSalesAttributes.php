@@ -14,7 +14,14 @@ use Webkul\Attribute\Repositories\AttributeRepository;
  * and the code is exactly what the reporting API keys its output on — a
  * typo on one install silently breaks any report that spans both.
  *
- * Safe to re-run: existing codes are left untouched.
+ * Safe to re-run: existing codes are left untouched — which also means it
+ * does NOT fix an attribute that already exists with a wrong type. `pagado_por`
+ * (select -> text) and `retencion` (price -> boolean) were corrected on
+ * 2026-09-19 against the real ACOFICUM export (see docs/reporting-api.md);
+ * an install that already ran the old version needs those two attribute
+ * rows' `type` column fixed by hand (Settings > Attributes won't offer a
+ * type change, so it's a direct DB update) before importing data that
+ * relies on them.
  */
 class InstallSalesAttributes extends Command
 {
@@ -76,15 +83,28 @@ class InstallSalesAttributes extends Command
                 'type' => 'text',
             ],
             [
+                /**
+                 * Text, not select: the Bitrix export shows this is who
+                 * physically paid (a person or company name), not a
+                 * category — almost every value is unique. A select here
+                 * would fill the dropdown with one throwaway option per
+                 * transaction (confirmed against the full ACOFICUM export:
+                 * 89 distinct values across 92 rows).
+                 */
                 'code' => 'pagado_por',
                 'name' => 'Pagado Por',
-                'type' => 'select',
-                'options' => [],
+                'type' => 'text',
             ],
             [
+                /**
+                 * Boolean, not price: Bitrix's values are "Si"/"No", not an
+                 * amount. Typed as price, "Si" silently becomes 0 — the
+                 * same as "no retención" — which is a real loss on a field
+                 * that matters for ACOFICUM's compliance reporting.
+                 */
                 'code' => 'retencion',
                 'name' => 'Retención',
-                'type' => 'price',
+                'type' => 'boolean',
             ],
         ];
     }
