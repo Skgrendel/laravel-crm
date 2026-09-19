@@ -152,6 +152,7 @@
                         type="select"
                         id="assignment_mode"
                         name="assignment_mode"
+                        :value="$settings->assignment_mode ?? 'fixed'"
                         :label="trans('whatsapp::app.settings.index.assignment-mode')"
                     >
                         @foreach (['fixed', 'round_robin', 'least_loaded'] as $mode)
@@ -172,6 +173,7 @@
                         type="select"
                         id="default_owner_id"
                         name="default_owner_id"
+                        :value="$settings->default_owner_id ?? ''"
                         :label="trans('whatsapp::app.settings.index.default-owner')"
                     >
                         <option value="">—</option>
